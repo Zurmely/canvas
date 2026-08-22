@@ -73,7 +73,7 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 4. Resolve the anchor path and output filenames before writing.
 5. Read [SHADCN-MAPPING.md](SHADCN-MAPPING.md). For charts, also read [CHARTS.md](CHARTS.md).
 6. Add only the required shadcn components to `.canvas/`.
-7. Author a default-exported React component in the target `.canvas.tsx` file.
+7. Author a default-exported React component in the target `.canvas.tsx` file. Pages should have theming according to the content the user requested to be built: override shadcn CSS variables on `:root` and `.dark` to match that subject, inject the stylesheet, and style only with semantic tokens. Do not include theming sections in the final canvas ever; theming is only useful for styling.
 8. Wrap every artifact in the shared `CanvasShell` from `@/canvas-shell`, passing the exact page title.
 9. Build in this order:
    - page heading and concise context;
@@ -93,6 +93,7 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 - Use one `h1`, descriptive section headings, real table headers, visible form labels, and explicit button text.
 - Use `Card` for bounded entities or grouped controls, not every section.
 - Use semantic Tailwind tokens such as `bg-background`, `text-foreground`, `text-muted-foreground`, and `border-border`.
+- Pages should have theming according to the content the user requested to be built. Do not include theming sections in the final canvas ever; theming is only useful for styling.
 - Use the configured shadcn chart component with Recharts; do not hand-roll SVG charts.
 - Every chart with hover-only values must include an exact print-only value table using the shared `canvas-print-only` class. PDF readers must not need a tooltip to recover chart values.
 - Filter controls, tab lists used as filters, and other view-switching UI have no purpose in a PDF. Mark them `canvas-print-hidden`. The printed artifact must include the full unfiltered dataset, grouped with visible headings that match the filter or tab categories. Never export only the currently selected slice.
@@ -120,6 +121,10 @@ Do not duplicate these controls inside canvas content.
 
 ## Visual system
 
+Pages should have theming according to the content the user requested to be built. Override the shadcn CSS variables on `:root` and `.dark` so primary, accent, background, chart, and related tokens match the subject. Inject that stylesheet in the canvas and style only with semantic tokens. Keep light and dark variants.
+
+Do not include theming sections in the final canvas ever. Theming is only useful for styling. Never render a theme picker, palette swatches, token samples, "Theme" headings, or any UI whose purpose is to show or switch themes.
+
 - Use shadcn theme tokens and Tailwind utilities. Avoid arbitrary colors when a semantic token exists.
 - Support light and dark system themes through the scaffold's variables.
 - Prefer flat surfaces, subtle borders, restrained radius, and clear spacing.
@@ -141,6 +146,8 @@ Do not duplicate these controls inside canvas content.
 
 - The most important content is visually dominant.
 - The artifact is useful without the surrounding chat.
+- The page palette matches the requested subject.
+- No theming section, picker, swatch, or token sample is rendered.
 - Every displayed value comes from provided or inspected data.
 - No empty component or placeholder is rendered.
 - The composition is not a uniform stack of cards.

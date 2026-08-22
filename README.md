@@ -50,6 +50,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 ## What it produces
 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
+- Color theming matched to the page subject, used only for styling (no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
 - Save as PDF, with print-friendly page breaks and chart values visible without hover
 - Optional one-file HTML export with no sibling assets
@@ -58,13 +59,17 @@ Re-running the same command overwrites the installed skill with the latest from 
 
 ```text
 .
-├── SKILL.md              # Agent instructions
-├── SCAFFOLD.md           # First-use runtime setup
-├── SHADCN-MAPPING.md     # Component selection
-├── CHARTS.md             # Chart and print guidance
-└── scripts/
-    ├── scaffold.mjs      # Creates the gitignored .canvas/ runtime
-    └── reset-runtime.mjs # Deletes that runtime so first-use can run again
+├── README.md             # Install and usage for humans; not part of the skill
+├── .gitignore            # Repository ignore rules; not part of the skill
+└── skills/
+    └── canvas-design/
+        ├── SKILL.md              # Agent instructions
+        ├── SCAFFOLD.md           # First-use runtime setup
+        ├── SHADCN-MAPPING.md     # Component selection
+        ├── CHARTS.md             # Chart and print guidance
+        └── scripts/
+            ├── scaffold.mjs      # Creates the gitignored .canvas/ runtime
+            └── reset-runtime.mjs # Deletes that runtime so first-use can run again
 ```
 
-`npx skills` copies these files into `.cursor/skills/canvas-design/` (or `~/.cursor/skills/canvas-design/` with `-g`). It does not copy this README.
+`npx skills add Zurmely/canvas` discovers `skills/canvas-design/` and copies only that folder into `.cursor/skills/canvas-design/` (or `~/.cursor/skills/canvas-design/` with `-g`). It does not copy this README or `.gitignore`.

@@ -82,6 +82,10 @@ Use `lucide-react`, which the shadcn setup installs. Icon-only controls require 
 
 ## Theme and styling
 
+Pages should have theming according to the content the user requested to be built. Override `:root` and `.dark` shadcn CSS variables to match that subject, then use semantic classes only.
+
+Do not include theming sections in the final canvas ever. Theming is only useful for styling. Never render a theme picker, palette swatches, token samples, or a "Theme" heading.
+
 - Prefer `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-muted`, and other semantic classes.
 - Avoid arbitrary hex values when a semantic variable applies.
 - Use chart variables for categorical data.
