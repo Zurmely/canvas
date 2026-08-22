@@ -32,7 +32,7 @@ Read generated source or current shadcn documentation for exact APIs. Components
 - Long content region → semantic HTML; do not force it into `ScrollArea`
 - Empty state → omit it in generated canvases rather than rendering placeholder UI
 
-Install only what the artifact needs. `CanvasShell` already requires `Button`.
+Install only what the artifact needs. `CanvasShell` already requires `Button` and `DropdownMenu`.
 
 ## Import pattern
 
@@ -74,7 +74,7 @@ Use cards for named entities, grouped controls, or independently scannable units
 
 ### Tables and dense data
 
-Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. For the PDF export fallback, hide those controls with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing, with each category in `canvas-print-keep`.
+Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. For the PDF snapshot, hide those controls with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing. Optional `canvas-print-keep` per category. Do not author page breaks.
 
 ### Icons
 
@@ -82,7 +82,15 @@ Use `lucide-react`, which the shadcn setup installs. Icon-only controls require 
 
 ## Theme and styling
 
-Pages should have theming according to the content the user requested to be built. Override `:root` and `.dark` shadcn CSS variables to match that subject, then use semantic classes only.
+Read `themeMode` from `.canvas/config.json` and follow that look only.
+
+### `content`
+
+Override `:root` and `.dark` shadcn CSS variables to match the requested subject, then use semantic classes only.
+
+### `neutral`
+
+Do not override `:root` or `.dark`. Do not inject a subject palette. Use the scaffold's default shadcn tokens and semantic classes only.
 
 Do not include theming sections in the final canvas ever. Theming is only useful for styling. Never render a theme picker, palette swatches, token samples, or a "Theme" heading.
 
@@ -90,4 +98,4 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Avoid arbitrary hex values when a semantic variable applies.
 - Use chart variables for categorical data.
 - Keep custom CSS in the canvas source only when Tailwind utilities cannot express the requirement.
-- Print-specific shared behavior belongs in `.canvas/src/index.css`, not individual artifacts.
+- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts.

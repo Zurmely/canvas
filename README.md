@@ -32,12 +32,17 @@ In Cursor Agent chat:
 /canvas-design
 ```
 
-Then describe the page. On first use in a workspace, the skill asks whether you want:
+Then describe the page. On first use in a workspace, the skill asks:
 
 - **React + TypeScript** — a live page you can keep working on in this project
 - **Self-contained HTML** — a page you can open in a browser
 
-After that, say `/canvas-design` again to add or revise pages. The skill scaffolds a disposable `.canvas/` runtime (gitignored) and writes the deliverable next to the file or folder you referenced.
+and:
+
+- **Default shadcn** — keep the standard shadcn colors
+- **Match the topic** — color the page to fit the subject
+
+Those choices are stored for the workspace. After that, say `/canvas-design` again to add or revise pages. The skill scaffolds a disposable `.canvas/` runtime (gitignored) and writes the deliverable next to the file or folder you referenced.
 
 ## Update
 
@@ -50,9 +55,9 @@ Re-running the same command overwrites the installed skill with the latest from 
 ## What it produces
 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
-- Color theming matched to the page subject, used only for styling (no theme picker on the page)
+- Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
-- Save as PDF, with print-friendly page breaks and chart values visible without hover
+- Save as PDF in portrait (1080×1920) or landscape (1920×1080), with a layout engine that packs cards and charts onto those pages
 - Optional one-file HTML export with no sibling assets
 
 ## Layout
@@ -66,9 +71,15 @@ Re-running the same command overwrites the installed skill with the latest from 
         ├── SKILL.md              # Agent instructions
         ├── SCAFFOLD.md           # First-use runtime setup
         ├── SHADCN-MAPPING.md     # Component selection
-        ├── CHARTS.md             # Chart and print guidance
+        ├── CHARTS.md             # Chart guidance
+        ├── runtime/              # CanvasShell, print CSS, and PDF layout engine
+        │   ├── dropdown-menu.tsx
+        │   ├── canvas-shell.tsx
+        │   ├── print-layout.ts
+        │   └── print.css
         └── scripts/
             ├── scaffold.mjs      # Creates the gitignored .canvas/ runtime
+            ├── sync-runtime.mjs  # Copies owned shell/print files into .canvas/
             └── reset-runtime.mjs # Deletes that runtime so first-use can run again
 ```
 

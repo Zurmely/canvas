@@ -4,10 +4,10 @@ The shared runtime lives at `<workspace>/.canvas/` and is always gitignored. It 
 
 ## Setup
 
-After asking for the output mode, run:
+After asking for the output mode and look, run:
 
 ```bash
-node .cursor/skills/canvas-design/scripts/scaffold.mjs <workspace-root> <react|html>
+node .cursor/skills/canvas-design/scripts/scaffold.mjs <workspace-root> <react|html> <neutral|content>
 ```
 
 If the project skill is resolved from another location, use the absolute path to its script.
@@ -20,11 +20,11 @@ The script:
 2. Creates a minimal Vite React TypeScript project under `.canvas/`.
 3. Installs current React, Vite, Tailwind CSS, shadcn, and single-file build dependencies.
 4. Initializes shadcn for Vite.
-5. Installs the shared shell's Button component.
-6. Writes `.canvas/config.json` with the selected output mode.
-7. Creates the system-aware light/dark `CanvasShell`, PDF export utilities, and the single-file build utility.
+5. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
+6. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `20`).
+7. Copies `CanvasShell`, print CSS, and the PDF layout engine from the skill's `runtime/` templates, plus the single-file build utility.
 
-Do not rerun setup when `.canvas/config.json` exists. Repair missing runtime files in place rather than deleting the folder.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell/print files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19` with valid mode and look syncs in place to `20`.
 
 ## Reset a broken setup
 
@@ -34,7 +34,7 @@ The runtime is disposable. If setup code changes or `.canvas/` becomes inconsist
 node .cursor/skills/canvas-design/scripts/reset-runtime.mjs <workspace-root> --yes
 ```
 
-This deletes only the generated `<workspace>/.canvas/` runtime. It does not delete canvas deliverables or remove `.canvas/` from `.gitignore`. The next invocation asks for the output mode and scaffolds from zero.
+This deletes only the generated `<workspace>/.canvas/` runtime. It does not delete canvas deliverables or remove `.canvas/` from `.gitignore`. The next invocation asks for the output mode and look, then scaffolds from zero.
 
 ## Authoring outside the runtime
 
@@ -85,21 +85,24 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 ## PDF export (not print design)
 
-The priority is screen. The classes below are a PDF export fallback for easier sharing, not a brief to design a printed document. Author the on-screen layout first — grids, filters, hover, scrolling — then apply these classes so **Save as PDF** paginates cleanly. Do not reverse that order.
+The priority is screen. **Save as PDF** is a share snapshot, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the layout engine cannot infer. Do not reverse that order.
 
-The shared export stylesheet uses a 12mm top and bottom `@page` margin so content is not flush with page edges after a break. Left and right spacing stays on the exported sections:
+`CanvasShell` offers **Portrait 1080×1920** and **Landscape 1920×1080**. At export it expands disclosures, locks `@page` to that size, packs compact cards into a grid, places charts one-up or two-up, caps plot height to the remaining slot, remasures Recharts, then calls `window.print()`. The user should keep **Save as PDF** and not override the paper size.
 
-- `canvas-print-section` — one h2-level topic that should stay on a single PDF page. Adjacent topics start a new PDF page.
-- `canvas-print-flow` — one h2-level topic that may paginate (long tables, timelines, source lists). Adjacent topics start a new PDF page.
-- `canvas-print-keep` — an atomic piece inside a topic that should not split (chart plus caption, filter category, compact group).
-- `canvas-print-only` — hidden on screen and visible in the PDF snapshot.
-- `canvas-print-hidden` — visible on screen and hidden in the PDF snapshot.
+Required marks:
 
-After the screen layout exists, mark sibling screen sections as PDF topics: one opening unit (title, metrics, lead-in) and one unit per h2. Do not mark metrics, alerts, or cards as their own top-level PDF topics — that is what makes breaks look random. Nested charts in a **screen grid** belong in one `canvas-print-flow` wrapper, with `canvas-print-keep` on each chart block — keep the grid on screen; the export stylesheet collapses it. Do not apply `canvas-print-section` to content taller than one PDF page; use `canvas-print-flow`. Do not wrap a chart in `canvas-print-keep` unless heading, plot, caption, and axis titles fit on one PDF page — cap `ChartContainer` at `max-h-[26rem]` (or ≤150mm) so keep-together cannot clip the axis.
+- `canvas-print-only` — hidden on screen and visible in the PDF snapshot (chart value tables; full unfiltered listings).
+- `canvas-print-hidden` — visible on screen and hidden in the PDF snapshot (filters, tab bars used as filters).
 
-Filters, tab bars used as filters, and other view switchers belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter, each group wrapped in `canvas-print-keep`. Do not leave the PDF showing only the currently selected slice.
+Optional:
 
-At export time the shared stylesheet constrains content to page width, removes horizontal clipping, collapses grids to one column, and wraps flex layouts and long text. That collapse is an export behavior, not a reason to author a single-column page. Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never target `.recharts-wrapper` or other Recharts internals in print CSS. `CanvasShell` keeps the header title in the PDF, hides header actions, expands closed collapsible and accordion panels, shrinks the layout to export width so Recharts can remasure, then caps any `[data-slot="chart"]` taller than 150mm and remasures again. Do not dispatch `window.resize` for that — ResponsiveContainer listens to ResizeObserver only. Headings stay with the following block. Cards, collapsibles, and accordion items keep together.
+- `canvas-print-keep` — heading plus chart (and source caption) that should stay together. Leave the value table outside that wrapper.
+
+Do not use `canvas-print-section` or `canvas-print-flow`. Do not author page breaks. Do not flatten a multi-column screen layout. `canvas-print-section` / `canvas-print-flow` left on older canvases are ignored.
+
+Filters, tab bars used as filters, and other view switchers belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Optional `canvas-print-keep` per category. Do not leave the PDF showing only the currently selected slice.
+
+Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never target `.recharts-wrapper` or other Recharts internals in print CSS. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the layout engine already constrains width and chart height before print.
 
 ## Add shadcn components
 
@@ -121,11 +124,14 @@ Run from `<workspace>/.canvas`.
 
 ## Verification
 
-- `.canvas/config.json` records `react` or `html`.
-- `.canvas/config.json` has `schemaVersion: 18`.
+- `.canvas/config.json` records `outputMode` as `react` or `html`.
+- `.canvas/config.json` records `themeMode` as `neutral` or `content`.
+- `.canvas/config.json` has `schemaVersion: 20`.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.
+- `.canvas/src/components/ui/dropdown-menu.tsx` exists.
+- `.canvas/src/print-layout.ts` exists.
 - No root `node_modules`, `package.json`, or package-manager lockfile was created by the skill.
 - The source imports `CanvasShell` and shadcn components through `@/`.
 - The build command succeeds.

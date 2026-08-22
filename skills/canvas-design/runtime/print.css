@@ -1,0 +1,219 @@
+.canvas-print-only {
+  display: none !important;
+}
+
+html.canvas-print-preparing .canvas-print-hidden {
+  display: none !important;
+}
+
+html.canvas-print-preparing .canvas-print-only {
+  display: block !important;
+}
+
+html.canvas-print-preparing [data-slot="dropdown-menu-content"] {
+  display: none !important;
+}
+
+.canvas-print-pack-cards {
+  display: grid !important;
+  grid-template-columns: repeat(var(--canvas-print-cols, 2), minmax(0, 1fr)) !important;
+  gap: 1rem !important;
+}
+
+.canvas-print-pack-charts {
+  display: grid !important;
+  grid-template-columns: repeat(var(--canvas-print-cols, 1), minmax(0, 1fr)) !important;
+  gap: 1.5rem !important;
+}
+
+.canvas-print-span-all {
+  grid-column: 1 / -1 !important;
+}
+
+@media print {
+  html {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  .canvas-root {
+    background: var(--background) !important;
+    background-color: var(--background) !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .canvas-print-hidden {
+    display: none !important;
+  }
+
+  .canvas-print-only {
+    display: block !important;
+  }
+
+  [data-slot="dropdown-menu-content"] {
+    display: none !important;
+  }
+
+  .canvas-root > .canvas-shell-header {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    backdrop-filter: none !important;
+    background: var(--background) !important;
+    background-color: var(--background) !important;
+    overflow: visible !important;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .canvas-root > .canvas-shell-header > div {
+    max-width: none !important;
+    min-height: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .canvas-root > .canvas-shell-header h1 {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+  }
+
+  .canvas-root > main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .canvas-root {
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .canvas-print-page-start {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  .canvas-print-unit {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  [data-slot="card"] {
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  figure {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .canvas-root > main .flex:not([data-slot="chart"]) {
+    flex-wrap: wrap !important;
+  }
+
+  [class*="overflow-x-"]:not([class*="recharts-"]) {
+    overflow-x: visible !important;
+  }
+
+  [data-slot="chart"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+  }
+
+  [data-slot="collapsible-content"],
+  [data-slot="accordion-content"] {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    --collapsible-panel-height: auto !important;
+    --collapsible-panel-width: auto !important;
+  }
+
+  [data-slot="collapsible-content"][hidden],
+  [data-slot="accordion-content"][hidden] {
+    display: block !important;
+  }
+
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed;
+  }
+
+  th,
+  td,
+  pre,
+  code {
+    max-width: 100%;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr,
+  img {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+}
