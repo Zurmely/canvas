@@ -29,16 +29,16 @@ Avoid pie charts with many slices, line charts for unordered categories, and cha
 1. Define data separately from `chartConfig`.
 2. Type the config with `satisfies ChartConfig`.
 3. Wrap Recharts primitives in `ChartContainer`.
-4. Give `ChartContainer` an explicit height, minimum height, or aspect ratio so `ResponsiveContainer` can measure it. If the chart uses Recharts `Label` or a category `YAxis`, add height so extra `margin` does not crush the plot. Cap that height so heading + chart + caption fit on **one printed page**: `max-h-[26rem]` (about 150mm) or an explicit `h-[280px]`–`h-[320px]`. Never leave a tall aspect such as `aspect-[4/5]` uncapped — print keep-together will clip the x-axis.
+4. Give `ChartContainer` an explicit height, minimum height, or aspect ratio so `ResponsiveContainer` can measure it. Size the plot for the **screen**. If the chart uses Recharts `Label` or a category `YAxis`, add height so extra `margin` does not crush the plot. Cap that height so the PDF export fallback cannot clip a keep-together block: `max-h-[26rem]` (about 150mm) or an explicit `h-[280px]`–`h-[320px]`. Do not shrink charts to look like printed figures. Never leave a tall aspect such as `aspect-[4/5]` uncapped — PDF keep-together will clip the x-axis.
 5. Use `accessibilityLayer` on supported Recharts chart components.
 6. Use `ChartTooltip` with `ChartTooltipContent`.
 7. Use `ChartLegend` with `ChartLegendContent` for multiple series.
 8. Reference configured colors as `var(--color-KEY)`.
-9. Add a print-only exact-value table immediately after the chart. Keep it outside `canvas-print-keep` (wrap the heading, chart, and source caption only) so the table can paginate without clipping the plot.
+9. Keep hover tooltips on screen. Add a `canvas-print-only` exact-value table immediately after the chart so the PDF snapshot can show numbers without hover. Keep it outside `canvas-print-keep` (wrap the heading, chart, and source caption only) so the table can paginate without clipping the plot.
 10. Keep `ChartContainer` and every ancestor `w-full min-w-0`; never use a fixed pixel width.
 11. Do not write print CSS against `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Recharts measures from a 0×0 overflow box; width/height overrides hide the SVG. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and `CanvasShell` already constrains layout width, then caps charts taller than 150mm, before print.
 12. Reserve Recharts `margin` for every axis title and category tick so labels are not clipped. Follow **Axis titles and clipping** below.
-13. Line and area series: `isAnimationActive={false}` and `dot={{ r: 3, clipDot: false }}`. Recharts clips dots to the plot by default, which hides the first and last points. Disable animation so the PDF captures the finished series after print resize.
+13. Line and area series: `isAnimationActive={false}` and `dot={{ r: 3, clipDot: false }}`. Recharts clips dots to the plot by default, which hides the first and last points. Disable animation so the PDF export captures the finished series after the export resize.
 14. Give line/area category `XAxis` `padding={{ left: 16, right: 16 }}`. When a point sits at the series max (typical for a growth line), add Y-axis domain headroom so the last marker is not clipped at the top-right corner.
 
 Recharts v3 rules:
@@ -85,7 +85,7 @@ Required pattern when using Recharts `Label`:
 </ChartContainer>
 ```
 
-For a many-category horizontal bar chart that needs a taller frame on screen, still cap print-safe height:
+For a many-category horizontal bar chart that needs a taller frame on screen, still cap height so the PDF export cannot clip:
 
 ```tsx
 <ChartContainer
@@ -102,7 +102,7 @@ Rules:
 - After adding margin, increase `ChartContainer` height (or aspect) so the plot itself does not become a cramped strip — but keep the result at or under `max-h-[26rem]`. A keep-together block taller than one PDF page is clipped, not paginated.
 - If a title still will not fit, put the units in surrounding HTML instead of forcing a clipped SVG `Label`.
 
-## Tall charts and PDF pages
+## Tall charts and the PDF export
 
 `canvas-print-keep` and `[data-slot="chart"]` use `break-inside: avoid`. If that box is taller than the printable page (heading + plot + caption + axis title), the browser starts it on a new page and **clips the overflow**. That cuts x-axis ticks and titles at the bottom edge.
 
@@ -131,11 +131,11 @@ Every chart section needs:
 - Use semantic destructive/success colors only when the data has that meaning.
 - Use value labels only when sparse enough to remain legible.
 - Do not create an empty chart or fabricate filler values.
-- Do not place a chart in a print grid column that cannot collapse to full width.
+- Keep multi-column screen grids. Do not place a chart in a grid column that cannot collapse to full width in the PDF snapshot.
 
 ## PDF values
 
-Hover tooltips do not exist in printed output. Every chart whose exact values are otherwise available only through hover must include a compact table inside a wrapper with `className="canvas-print-only"`.
+Hover tooltips stay on screen. They do not exist in the PDF export snapshot, so every chart whose exact values are otherwise available only through hover must also include a compact table inside a wrapper with `className="canvas-print-only"`. That table is a share fallback, not the primary reading experience.
 
 ```tsx
 <div className="canvas-print-only mt-4">
@@ -166,8 +166,8 @@ Rules:
 - Use the same source array as the chart; never duplicate numeric data manually.
 - Include units in headers or formatted values.
 - Include every plotted series and category.
-- Use `canvas-print-only` on the value-table wrapper so it is hidden on screen and visible in print. Put the heading, chart, and table in the same h2-level print topic; wrap the heading plus chart (and source caption) in `canvas-print-keep` so a break cannot land between them. Leave the value table outside that keep.
-- For a sparse chart, `LabelList` may also show values directly on the plot, but it does not replace the print table when labels could overlap or be clipped.
+- Use `canvas-print-only` on the value-table wrapper so it is hidden on screen and visible in the PDF snapshot. Put the heading, chart, and table in the same h2-level PDF topic; wrap the heading plus chart (and source caption) in `canvas-print-keep` so a break cannot land between them. Leave the value table outside that keep.
+- For a sparse chart, `LabelList` may also show values directly on the plot, but it does not replace the PDF value table when labels could overlap or be clipped.
 - Avoid page breaks through short tables when practical; long tables may paginate naturally.
 
 ## Accessibility and interpretation

@@ -74,7 +74,7 @@ Use cards for named entities, grouped controls, or independently scannable units
 
 ### Tables and dense data
 
-Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. If the canvas filters or tabs a dataset, hide those controls in print and show every category in a grouped `canvas-print-only` listing, with each category in `canvas-print-keep`.
+Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. For the PDF export fallback, hide those controls with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing, with each category in `canvas-print-keep`.
 
 ### Icons
 
