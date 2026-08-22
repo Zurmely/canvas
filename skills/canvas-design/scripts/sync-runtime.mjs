@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
-const CURRENT_SCHEMA = 20
+const CURRENT_SCHEMA = 21
 
 function skillRootFromThisFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..")

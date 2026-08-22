@@ -98,4 +98,4 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Avoid arbitrary hex values when a semantic variable applies.
 - Use chart variables for categorical data.
 - Keep custom CSS in the canvas source only when Tailwind utilities cannot express the requirement.
-- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts.
+- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts. PDF type (24px root, 18px floor) and interactive-chrome hiding are runtime-owned. Do not add `print:text-*` in canvas source.

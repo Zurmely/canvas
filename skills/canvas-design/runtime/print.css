@@ -2,6 +2,26 @@
   display: none !important;
 }
 
+html:not(.canvas-print-preparing) {
+  font-size: 16px;
+}
+
+html.canvas-print-preparing {
+  font-size: 24px;
+}
+
+html.canvas-print-preparing .canvas-root {
+  line-height: 1.4;
+}
+
+html.canvas-print-preparing .canvas-root > .canvas-shell-header h1 {
+  font-size: 1.5rem !important;
+}
+
+html.canvas-print-preparing [data-slot="chart"] text {
+  font-size: 18px !important;
+}
+
 html.canvas-print-preparing .canvas-print-hidden {
   display: none !important;
 }
@@ -10,7 +30,17 @@ html.canvas-print-preparing .canvas-print-only {
   display: block !important;
 }
 
-html.canvas-print-preparing [data-slot="dropdown-menu-content"] {
+html.canvas-print-preparing [data-slot="dropdown-menu-content"],
+html.canvas-print-preparing [data-slot="tabs-list"],
+html.canvas-print-preparing [data-slot="select-trigger"],
+html.canvas-print-preparing [data-slot="switch"],
+html.canvas-print-preparing [data-slot="slider"],
+html.canvas-print-preparing [data-slot="popover-content"],
+html.canvas-print-preparing [data-slot="tooltip-content"],
+html.canvas-print-preparing [data-slot="hover-card-content"],
+html.canvas-print-preparing [data-slot="chart"] .recharts-tooltip-wrapper,
+html.canvas-print-preparing [data-slot="collapsible-trigger"] svg,
+html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
   display: none !important;
 }
 
@@ -32,6 +62,7 @@ html.canvas-print-preparing [data-slot="dropdown-menu-content"] {
 
 @media print {
   html {
+    font-size: 24px;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -59,6 +90,10 @@ html.canvas-print-preparing [data-slot="dropdown-menu-content"] {
     padding: 0 !important;
   }
 
+  .canvas-root {
+    line-height: 1.4;
+  }
+
   .canvas-print-hidden {
     display: none !important;
   }
@@ -67,8 +102,22 @@ html.canvas-print-preparing [data-slot="dropdown-menu-content"] {
     display: block !important;
   }
 
-  [data-slot="dropdown-menu-content"] {
+  [data-slot="dropdown-menu-content"],
+  [data-slot="tabs-list"],
+  [data-slot="select-trigger"],
+  [data-slot="switch"],
+  [data-slot="slider"],
+  [data-slot="popover-content"],
+  [data-slot="tooltip-content"],
+  [data-slot="hover-card-content"],
+  [data-slot="chart"] .recharts-tooltip-wrapper,
+  [data-slot="collapsible-trigger"] svg,
+  [data-slot="accordion-trigger"] svg {
     display: none !important;
+  }
+
+  [data-slot="chart"] text {
+    font-size: 18px !important;
   }
 
   .canvas-root > .canvas-shell-header {
@@ -98,6 +147,7 @@ html.canvas-print-preparing [data-slot="dropdown-menu-content"] {
     overflow: visible !important;
     text-overflow: unset !important;
     white-space: normal !important;
+    font-size: 1.5rem !important;
   }
 
   .canvas-root > main {

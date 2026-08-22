@@ -36,7 +36,7 @@ Avoid pie charts with many slices, line charts for unordered categories, and cha
 8. Reference configured colors as `var(--color-KEY)`.
 9. Keep hover tooltips on screen. Add a `canvas-print-only` exact-value table immediately after the chart so the PDF snapshot can show numbers without hover. Optional: wrap the heading, chart, and source caption in `canvas-print-keep`; leave the table outside that wrapper so it can paginate.
 10. Keep `ChartContainer` and every ancestor `w-full min-w-0`; never use a fixed pixel width.
-11. Do not write print CSS against `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Recharts measures from a 0×0 overflow box; width/height overrides hide the SVG. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the PDF layout engine already constrains layout width and chart height before print.
+11. Do not write print CSS against `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Recharts measures from a 0×0 overflow box; width/height overrides hide the SVG. Print CSS may set `font-size` on `[data-slot="chart"] text` so ticks, legends, and axis titles meet the 18px PDF floor. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the PDF layout engine already constrains layout width and chart height before print.
 12. Reserve Recharts `margin` for every axis title and category tick so labels are not clipped. Follow **Axis titles and clipping** below.
 13. Line and area series: `isAnimationActive={false}` and `dot={{ r: 3, clipDot: false }}`. Recharts clips dots to the plot by default, which hides the first and last points. Disable animation so the PDF export captures the finished series after the export resize.
 14. Give line/area category `XAxis` `padding={{ left: 16, right: 16 }}`. When a point sits at the series max (typical for a growth line), add Y-axis domain headroom so the last marker is not clipped at the top-right corner.
@@ -173,7 +173,7 @@ Rules:
 - Use the same source array as the chart; never duplicate numeric data manually.
 - Include units in headers or formatted values.
 - Include every plotted series and category.
-- Use `canvas-print-only` on the value-table wrapper so it is hidden on screen and visible in the PDF snapshot. Optional: wrap the heading plus chart (and source caption) in `canvas-print-keep`. Leave the value table outside that keep.
+- Use `canvas-print-only` on the value-table wrapper so it is hidden on screen and visible in the PDF snapshot. Keep `text-sm` in the source; the export scale (24px root) enlarges it. Optional: wrap the heading plus chart (and source caption) in `canvas-print-keep`. Leave the value table outside that keep.
 - For a sparse chart, `LabelList` may also show values directly on the plot, but it does not replace the PDF value table when labels could overlap or be clipped.
 - Avoid page breaks through short tables when practical; long tables may paginate naturally.
 

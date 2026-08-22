@@ -14,6 +14,8 @@ Create standalone visual artifacts with React, TypeScript, Tailwind CSS, and sha
 
 **The print fallback isn't really a print, just a PDF export for easier sharing.** `Save as PDF` exists so the user can send a snapshot as a 1080×1920 (portrait) or 1920×1080 (landscape) PDF. A layout engine in `CanvasShell` reflows cards, charts, and sections to fill those pages. Mark only what the engine cannot infer — screen-only controls and print-only data. Do not design a sequence of PDF pages.
 
+**PDF type and chrome are runtime-owned.** The live page uses dashboard type (`text-sm`, `text-xs`) and keeps interactions. At export the shell raises root type to a slide-deck scale (24px body, 18px floor), hides interactive chrome, then packs the enlarged layout. Do not author giant type, `print:text-*` utilities, or slide-sized headings to compensate.
+
 Do not:
 
 - Stack the page as one paper-width column because a PDF exists
@@ -21,10 +23,11 @@ Do not:
 - Hide filters, tabs, or hover tooltips from the screen because they do not exist in the PDF
 - Treat `canvas-print-only` tables as the primary reading experience
 - Author page-break classes or flatten a multi-column screen layout for the PDF
+- Author `print:` font utilities or enlarge on-screen type so the PDF will “read as a slide”
 
 ## First-use setup
 
-At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `20`.
+At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `21`.
 
 ### Hard gate
 
@@ -52,17 +55,17 @@ Do not ask the user to choose a framework. Use Vite + React + TypeScript: it is 
 
 After the answers, read [SCAFFOLD.md](SCAFFOLD.md), scaffold `.canvas/` with both choices, store them in `.canvas/config.json`, and add `.canvas/` to the workspace `.gitignore`. The ignored folder owns dependencies, shadcn component source, Vite configuration, shared styles, build scripts, and temporary output. Never put a canvas deliverable inside `.canvas/`.
 
-On later invocations, reuse the stored choices when `schemaVersion` is `19` or `20`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
+On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, or `21`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
 
 ```bash
 node .cursor/skills/canvas-design/scripts/sync-runtime.mjs <workspace-root>
 ```
 
-Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, and the PDF layout engine, adds `dropdown-menu` if missing, and bumps `schemaVersion` to `20`. Do not narrate the sync.
+Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, and the PDF layout engine, adds `dropdown-menu` if missing, and bumps `schemaVersion` to `21`. Do not narrate the sync.
 
-If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `20`. If schema `18` already has a valid `themeMode`, only run the sync.
+If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `21`. If schema `18` already has a valid `themeMode`, only run the sync.
 
-If the config is missing, malformed, or has a schema version other than `18`, `19`, or `20`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
+If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, or `21`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
 
 If setup is broken or the scaffold schema is incompatible, read the reset section in [SCAFFOLD.md](SCAFFOLD.md). Never delete `.canvas/` without explicit user confirmation.
 
@@ -131,7 +134,7 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 - Use semantic Tailwind tokens such as `bg-background`, `text-foreground`, `text-muted-foreground`, and `border-border`.
 - Follow `themeMode`. Do not include theming sections in the final canvas ever; theming is only useful for styling.
 - Use the configured shadcn chart component with Recharts; do not hand-roll SVG charts.
-- Design the on-screen page first: responsive grids, filters, tabs, hover tooltips, and scrolling. After that structure exists, mark only what the PDF layout engine cannot infer. Do not reverse this order.
+- Design the on-screen page first: responsive grids, filters, tabs, hover tooltips, scrolling, and compact dashboard type. After that structure exists, mark only what the PDF layout engine cannot infer. Do not reverse this order. Do not enlarge type or add `print:text-*` so the PDF will read as a slide — the runtime owns that.
 - Every chart with hover-only values must keep the tooltip on screen and include an exact `canvas-print-only` value table so the PDF snapshot can show numbers without hover.
 - Filter controls, tab lists used as filters, and other view-switching UI belong on screen. Mark them `canvas-print-hidden` so they drop out of the PDF. The exported snapshot must include the full unfiltered dataset, grouped with visible headings that match the filter or tab categories. Never export only the currently selected slice.
 - Do not mark page breaks. Do not use `canvas-print-section` or `canvas-print-flow`. The shell packs topics onto 1080×1920 or 1920×1080 pages, keeps related cards in a grid, and sizes charts to the remaining slot.
@@ -148,8 +151,8 @@ Every canvas must use `CanvasShell`, which provides:
 
 - A top header containing the canvas title.
 - A light/dark toggle in the header. Initial mode and live system changes follow `prefers-color-scheme` until the user toggles explicitly.
-- A top-right **Save as PDF** dropdown with **Portrait 1080×1920** and **Landscape 1920×1080**. That share snapshot expands closed collapsible/accordion sections, locks the page size, packs cards and charts into the slide, remasures plots, then calls `window.print()`.
-- PDF export styles that keep the shell header with the page title only. The theme toggle and Save as PDF action are hidden. The current light or dark theme is preserved. Closed disclosure panels are opened. Filter and other view-switching controls stay hidden; the snapshot is the complete dataset grouped by those categories. The layout engine chooses page breaks so related cards share a page and leftover empty slides are avoided.
+- A top-right **Save as PDF** dropdown with **Portrait 1080×1920** and **Landscape 1920×1080**. That share snapshot expands closed collapsible/accordion sections, raises type to a 24px body with an 18px floor, hides interactive chrome, locks the page size, packs cards and charts into the slide, remasures plots, then calls `window.print()`.
+- PDF export styles that keep the shell header with the page title only. The theme toggle and Save as PDF action are hidden. The current light or dark theme is preserved. Closed disclosure panels are opened. Tab lists, chevrons, tooltips, and other view-switching controls stay hidden; the snapshot is the complete dataset grouped by those categories. Type is presentation-sized so the PDF reads without zoom. The layout engine chooses page breaks so related cards share a page and leftover empty slides are avoided.
 - A bottom-right back-to-top floating action button only when:
   - document height exceeds `1.5 ×` the viewport height; and
   - the user has scrolled more than `600px`.
@@ -173,7 +176,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Use shadcn theme tokens and Tailwind utilities. Avoid arbitrary colors when a semantic token exists.
 - Support light and dark system themes through the scaffold's variables.
 - Prefer flat surfaces, subtle borders, restrained radius, and clear spacing.
-- No gradients, decorative emojis, giant type, rainbow coloring, or ornamental borders.
+- No gradients, decorative emojis, giant type on screen, rainbow coloring, or ornamental borders. PDF slide type is applied by the runtime at export.
 - Use shadows only when a standard shadcn component uses one for layering.
 - Establish hierarchy through layout, spacing, typography, and one deliberate accent.
 - Avoid a wall of equal cards. Mix open sections, one dominant artifact, compact summaries, and bounded entities.
@@ -203,6 +206,8 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Every chart's exact values are visible in the PDF snapshot.
 - Filter UI stays on screen and is hidden in the PDF snapshot; the snapshot shows every category with labeled separations, not only the active filter.
 - No `canvas-print-section`, `canvas-print-flow`, or other page-break classes. Only `canvas-print-hidden` / `canvas-print-only` (and optional `canvas-print-keep` on a heading+chart) are used.
+- No `print:text-*` or slide-sized type in the canvas source. On-screen type stays compact.
+- The PDF snapshot is readable at 1080×1920 / 1920×1080 fit-to-window without zoom. Body copy is presentation-sized; no leftover tab lists, chevrons, or tooltips.
 - The PDF header shows the page title and no header actions.
 - No card, chart, table, SVG, or text block overflows or is clipped at either page edge. First and last line/area points stay fully visible.
 - The source typechecks and builds.

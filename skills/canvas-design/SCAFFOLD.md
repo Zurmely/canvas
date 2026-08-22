@@ -21,10 +21,10 @@ The script:
 3. Installs current React, Vite, Tailwind CSS, shadcn, and single-file build dependencies.
 4. Initializes shadcn for Vite.
 5. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
-6. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `20`).
+6. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `21`).
 7. Copies `CanvasShell`, print CSS, and the PDF layout engine from the skill's `runtime/` templates, plus the single-file build utility.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell/print files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19` with valid mode and look syncs in place to `20`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell/print files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19` or `20` with valid mode and look syncs in place to `21`.
 
 ## Reset a broken setup
 
@@ -87,7 +87,9 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 The priority is screen. **Save as PDF** is a share snapshot, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the layout engine cannot infer. Do not reverse that order.
 
-`CanvasShell` offers **Portrait 1080×1920** and **Landscape 1920×1080**. At export it expands disclosures, locks `@page` to that size, packs compact cards into a grid, places charts one-up or two-up, caps plot height to the remaining slot, remasures Recharts, then calls `window.print()`. The user should keep **Save as PDF** and not override the paper size.
+`CanvasShell` offers **Portrait 1080×1920** and **Landscape 1920×1080**. At export it expands disclosures, raises root type to a 24px slide-deck scale with an 18px floor, hides interactive chrome (tab lists, chevrons, tooltips, selects), locks `@page` to that size, packs compact cards into a grid, places charts one-up or two-up, caps plot height to the remaining slot, remasures Recharts, then calls `window.print()`. The user should keep **Save as PDF** and not override the paper size.
+
+Do not author `print:text-*` or enlarge on-screen type for the PDF. Presentation type is runtime-owned so the live page stays a compact dashboard.
 
 Required marks:
 
@@ -102,7 +104,7 @@ Do not use `canvas-print-section` or `canvas-print-flow`. Do not author page bre
 
 Filters, tab bars used as filters, and other view switchers belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Optional `canvas-print-keep` per category. Do not leave the PDF showing only the currently selected slice.
 
-Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never target `.recharts-wrapper` or other Recharts internals in print CSS. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the layout engine already constrains width and chart height before print.
+Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Print CSS may set `font-size` on `[data-slot="chart"] text` so ticks and axis titles hit the 18px floor. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the layout engine already constrains width and chart height before print.
 
 ## Add shadcn components
 
@@ -126,7 +128,7 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 20`.
+- `.canvas/config.json` has `schemaVersion: 21`.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.

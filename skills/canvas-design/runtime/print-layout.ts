@@ -6,10 +6,13 @@ export const PAGE_SIZES = {
 } as const
 
 const INSET_PX = 48
-const COMPACT_MAX_PX = 280
+const COMPACT_MAX_PX = 420
 const MIN_CHART_PX = 240
-const MIN_BAND_PX = 120
+const MIN_BAND_PX = 180
+const MIN_FONT_PX = 18
 const PAGE_STYLE_ID = "canvas-print-page-size"
+
+type StyledElement = HTMLElement | SVGElement
 
 type BandKind = "card-band" | "chart-band" | "keep" | "table" | "heading" | "block"
 
@@ -23,7 +26,7 @@ type Restorer = {
   add: (fn: () => void) => void
   addClass: (el: Element, className: string) => void
   setAttr: (el: Element, name: string, value: string) => void
-  setStyle: (el: HTMLElement, prop: string, value: string) => void
+  setStyle: (el: StyledElement, prop: string, value: string) => void
   restore: () => void
 }
 
@@ -54,7 +57,7 @@ function createRestorer(): Restorer {
         }
       })
     },
-    setStyle(el, prop, value) {
+    setStyle(el: StyledElement, prop, value) {
       const previous = el.style.getPropertyValue(prop)
       el.style.setProperty(prop, value)
       fns.push(() => {
@@ -549,6 +552,24 @@ function pageInnerHeight(orientation: PrintOrientation) {
   return PAGE_SIZES[orientation].height - INSET_PX * 2
 }
 
+function enforceMinFontSize(minPx: number, restorer: Restorer) {
+  const root = document.querySelector(".canvas-root")
+  if (!(root instanceof HTMLElement)) {
+    return
+  }
+
+  const nodes = [root, ...Array.from(root.querySelectorAll("*"))]
+  for (const el of nodes) {
+    if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) {
+      continue
+    }
+    const size = Number.parseFloat(window.getComputedStyle(el).fontSize)
+    if (Number.isFinite(size) && size > 0 && size < minPx) {
+      restorer.setStyle(el, "font-size", `${minPx}px`)
+    }
+  }
+}
+
 export async function printCanvas(orientation: PrintOrientation) {
   if (printing) {
     return
@@ -561,6 +582,8 @@ export async function printCanvas(orientation: PrintOrientation) {
     applyPageSize(orientation, restorer)
     await expandDisclosures(restorer)
     applyPrintWidth(orientation, restorer)
+    await settleLayout()
+    enforceMinFontSize(MIN_FONT_PX, restorer)
     await settleLayout()
 
     const main = document.querySelector(".canvas-root > main")
