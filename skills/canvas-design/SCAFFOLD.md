@@ -22,7 +22,7 @@ The script:
 4. Initializes shadcn for Vite.
 5. Installs the shared shell's Button component.
 6. Writes `.canvas/config.json` with the selected output mode.
-7. Creates the system-aware light/dark `CanvasShell`, print utilities, and the single-file build utility.
+7. Creates the system-aware light/dark `CanvasShell`, PDF export utilities, and the single-file build utility.
 
 Do not rerun setup when `.canvas/config.json` exists. Repair missing runtime files in place rather than deleting the folder.
 
@@ -83,21 +83,23 @@ node .canvas/scripts/build.mjs path/to/name.canvas.tsx path/to/name.html
 
 The build script writes one HTML file with JavaScript and CSS inlined. Do not use assets from `public/`; they are not guaranteed to be inlined. Embed small images as data URLs when a truly self-contained artifact requires them.
 
-## Print layout
+## PDF export (not print design)
 
-The shared print stylesheet uses a 12mm top and bottom `@page` margin so content is not flush with page edges after a break. Left and right spacing stays on the printed sections:
+The priority is screen. The classes below are a PDF export fallback for easier sharing, not a brief to design a printed document. Author the on-screen layout first — grids, filters, hover, scrolling — then apply these classes so **Save as PDF** paginates cleanly. Do not reverse that order.
 
-- `canvas-print-section` — one h2-level topic that should stay on a single page. Adjacent topics start a new PDF page.
+The shared export stylesheet uses a 12mm top and bottom `@page` margin so content is not flush with page edges after a break. Left and right spacing stays on the exported sections:
+
+- `canvas-print-section` — one h2-level topic that should stay on a single PDF page. Adjacent topics start a new PDF page.
 - `canvas-print-flow` — one h2-level topic that may paginate (long tables, timelines, source lists). Adjacent topics start a new PDF page.
 - `canvas-print-keep` — an atomic piece inside a topic that should not split (chart plus caption, filter category, compact group).
-- `canvas-print-only` — hidden on screen and visible in print.
-- `canvas-print-hidden` — visible on screen and hidden in print.
+- `canvas-print-only` — hidden on screen and visible in the PDF snapshot.
+- `canvas-print-hidden` — visible on screen and hidden in the PDF snapshot.
 
-Author the canvas as sibling print topics: one opening unit (title, metrics, lead-in) and one unit per h2. Do not mark metrics, alerts, or cards as their own top-level print topics — that is what makes PDF breaks look random. Nested charts in a screen grid belong in one `canvas-print-flow` wrapper, with `canvas-print-keep` on each chart block. Do not apply `canvas-print-section` to content taller than one page; use `canvas-print-flow`. Do not wrap a chart in `canvas-print-keep` unless heading, plot, caption, and axis titles fit on one page — cap `ChartContainer` at `max-h-[26rem]` (or ≤150mm) so print keep-together cannot clip the axis.
+After the screen layout exists, mark sibling screen sections as PDF topics: one opening unit (title, metrics, lead-in) and one unit per h2. Do not mark metrics, alerts, or cards as their own top-level PDF topics — that is what makes breaks look random. Nested charts in a **screen grid** belong in one `canvas-print-flow` wrapper, with `canvas-print-keep` on each chart block — keep the grid on screen; the export stylesheet collapses it. Do not apply `canvas-print-section` to content taller than one PDF page; use `canvas-print-flow`. Do not wrap a chart in `canvas-print-keep` unless heading, plot, caption, and axis titles fit on one PDF page — cap `ChartContainer` at `max-h-[26rem]` (or ≤150mm) so keep-together cannot clip the axis.
 
-Filters, tab bars used as filters, and other view switchers belong on screen only. Hide the control with `canvas-print-hidden`. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter, each group wrapped in `canvas-print-keep`. Do not leave the PDF showing only the currently selected slice.
+Filters, tab bars used as filters, and other view switchers belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter, each group wrapped in `canvas-print-keep`. Do not leave the PDF showing only the currently selected slice.
 
-At print time the shared stylesheet constrains content to page width, removes horizontal clipping, collapses grids to one column, and wraps flex layouts and long text. Print paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. Print uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never target `.recharts-wrapper` or other Recharts internals in print CSS. `CanvasShell` keeps the header title in the PDF, hides header actions, expands closed collapsible and accordion panels, shrinks the layout to print width so Recharts can remasure, then caps any `[data-slot="chart"]` taller than 150mm and remasures again. Do not dispatch `window.resize` for that — ResponsiveContainer listens to ResizeObserver only. Headings stay with the following block. Cards, collapsibles, and accordion items keep together.
+At export time the shared stylesheet constrains content to page width, removes horizontal clipping, collapses grids to one column, and wraps flex layouts and long text. That collapse is an export behavior, not a reason to author a single-column page. Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never target `.recharts-wrapper` or other Recharts internals in print CSS. `CanvasShell` keeps the header title in the PDF, hides header actions, expands closed collapsible and accordion panels, shrinks the layout to export width so Recharts can remasure, then caps any `[data-slot="chart"]` taller than 150mm and remasures again. Do not dispatch `window.resize` for that — ResponsiveContainer listens to ResizeObserver only. Headings stay with the following block. Cards, collapsibles, and accordion items keep together.
 
 ## Add shadcn components
 

@@ -8,6 +8,20 @@ disable-model-invocation: true
 
 Create standalone visual artifacts with React, TypeScript, Tailwind CSS, and shadcn/ui. This skill intentionally does not use Cursor's `cursor/canvas` runtime.
 
+## Screen first
+
+**The priority is screen.** The canvas is a live page in a browser. Layout, density, interaction, and visual hierarchy are for that screen. Do not design a print document, a paper report, or a sequence of PDF pages and then squeeze it onto a display.
+
+**The print fallback isn't really a print, just a PDF export for easier sharing.** `Save as PDF` exists so the user can send a snapshot. Shared `canvas-print-*` classes make that snapshot paginate cleanly. Apply them on top of a finished screen layout — they must not dictate the on-screen composition.
+
+Do not:
+
+- Stack the page as one paper-width column because the PDF is single-column
+- Size charts, type, or sections to A4 / letter instead of the viewport
+- Hide filters, tabs, or hover tooltips from the screen because they do not exist in the PDF
+- Treat `canvas-print-only` tables as the primary reading experience
+- Let page-break classes become the page structure
+
 ## First-use setup
 
 At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `18`.
@@ -75,11 +89,12 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 6. Add only the required shadcn components to `.canvas/`.
 7. Author a default-exported React component in the target `.canvas.tsx` file. Pages should have theming according to the content the user requested to be built: override shadcn CSS variables on `:root` and `.dark` to match that subject, inject the stylesheet, and style only with semantic tokens. Do not include theming sections in the final canvas ever; theming is only useful for styling.
 8. Wrap every artifact in the shared `CanvasShell` from `@/canvas-shell`, passing the exact page title.
-9. Build in this order:
+9. Build the **screen** page in this order:
    - page heading and concise context;
    - primary artifact or insight;
    - supporting controls, metrics, details, and source note;
-   - interactions only when they improve the artifact.
+   - on-screen interactions that help the reader (filters, tabs, hover, disclosure) — do not skip them because the PDF export hides them;
+   - then mark that screen structure with the PDF export classes below. Do not reverse this order.
 10. Validate by running the runtime's typecheck/build command against the source.
 11. In HTML mode, run `.canvas/scripts/build.mjs <source> <output>` and verify the output is one HTML file with no sibling assets.
 12. Run the pre-delivery review.
@@ -95,12 +110,13 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 - Use semantic Tailwind tokens such as `bg-background`, `text-foreground`, `text-muted-foreground`, and `border-border`.
 - Pages should have theming according to the content the user requested to be built. Do not include theming sections in the final canvas ever; theming is only useful for styling.
 - Use the configured shadcn chart component with Recharts; do not hand-roll SVG charts.
-- Every chart with hover-only values must include an exact print-only value table using the shared `canvas-print-only` class. PDF readers must not need a tooltip to recover chart values.
-- Filter controls, tab lists used as filters, and other view-switching UI have no purpose in a PDF. Mark them `canvas-print-hidden`. The printed artifact must include the full unfiltered dataset, grouped with visible headings that match the filter or tab categories. Never export only the currently selected slice.
-- Structure the canvas as sibling print topics, one per h2-level subject (plus one opening unit for the title, metrics, and lead-in). Use `canvas-print-section` when the topic fits on one page and `canvas-print-flow` when it must paginate. Adjacent topics start a new PDF page. Do not give metrics, alerts, or individual cards their own top-level print class.
+- Design the on-screen page first: responsive grids, filters, tabs, hover tooltips, and scrolling. After that structure exists, mark it for the PDF export fallback — the print fallback isn't really a print, just a PDF export for easier sharing.
+- Every chart with hover-only values must keep the tooltip on screen and include an exact `canvas-print-only` value table so the PDF snapshot can show numbers without hover.
+- Filter controls, tab lists used as filters, and other view-switching UI belong on screen. Mark them `canvas-print-hidden` so they drop out of the PDF. The exported snapshot must include the full unfiltered dataset, grouped with visible headings that match the filter or tab categories. Never export only the currently selected slice.
+- For the PDF export, mark sibling screen sections as topics — one per h2-level subject (plus one opening unit for the title, metrics, and lead-in). Use `canvas-print-section` when that screen section fits on one PDF page and `canvas-print-flow` when it must paginate. Adjacent topics start a new PDF page. Do not give metrics, alerts, or individual cards their own top-level print class. Do not flatten a multi-column screen layout into a single column just to match the PDF.
 - Wrap atomic inner pieces — a chart with its caption, a filter category, a keep-together group — in `canvas-print-keep`. Keep the print-only value table outside that wrapper so a tall table can paginate instead of clipping the chart. Headings stay with the following block. Cards, collapsibles, and accordion items stay together automatically.
-- A keep-together chart block must fit on one printed page. Cap `ChartContainer` with `max-h-[26rem]` (or an explicit `h-[280px]`–`h-[320px]`). Do not use a tall aspect ratio such as `aspect-[4/5]` without a max height — print `break-inside: avoid` will clip the x-axis and its title at the page edge.
-- Never give printable cards, charts, tables, or their parents a fixed pixel width or positive `min-width`. Use `w-full`, `min-w-0`, responsive grids, and wrapping text so the shared print stylesheet can fit them within the page.
+- Size charts for the screen. Cap `ChartContainer` with `max-h-[26rem]` (or an explicit `h-[280px]`–`h-[320px]`) so the PDF export cannot clip a keep-together block; do not shrink plots to look like printed figures. Do not use a tall aspect ratio such as `aspect-[4/5]` without a max height — PDF `break-inside: avoid` will clip the x-axis and its title at the page edge.
+- Never give cards, charts, tables, or their parents a fixed pixel width or positive `min-width`. Use `w-full`, `min-w-0`, responsive grids, and wrapping text so the screen layout can reflow and the PDF export can fit the page.
 - Store interactive state in the canvas component. Do not add persistence unless the user requests it.
 - Embed artifact data in the source. No runtime network calls unless the user explicitly requests a live data source.
 - Never render placeholders, empty charts, empty tables, fabricated samples, or “No data” sections. Omit empty sections; if the entire artifact would be empty, ask for the missing data.
@@ -111,8 +127,8 @@ Every canvas must use `CanvasShell`, which provides:
 
 - A top header containing the canvas title.
 - A light/dark toggle in the header. Initial mode and live system changes follow `prefers-color-scheme` until the user toggles explicitly.
-- A top-right **Save as PDF** button that expands closed collapsible/accordion sections, constrains the page to print width so charts remasure, caps any chart taller than 150mm and remasures again, then calls `window.print()`.
-- Print styles that keep the shell header with the page title only. The theme toggle and Save as PDF action are hidden. The current light or dark theme and readable page output are preserved. Closed disclosure panels are opened for the PDF. Filter and other view-switching controls stay hidden; printed content is the complete dataset grouped by those categories. Page breaks fall between print topics, not through headings or atomic pieces.
+- A top-right **Save as PDF** button (a share snapshot, not a print-designed layout) that expands closed collapsible/accordion sections, constrains the page to export width so charts remasure, caps any chart taller than 150mm and remasures again, then calls `window.print()`.
+- PDF export styles that keep the shell header with the page title only. The theme toggle and Save as PDF action are hidden. The current light or dark theme and readable page output are preserved. Closed disclosure panels are opened for the PDF. Filter and other view-switching controls stay hidden; the snapshot is the complete dataset grouped by those categories. Page breaks fall between marked topics, not through headings or atomic pieces.
 - A bottom-right back-to-top floating action button only when:
   - document height exceeds `1.5 ×` the viewport height; and
   - the user has scrolled more than `600px`.
@@ -144,6 +160,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 
 ## Pre-delivery review
 
+- The page is designed for the screen. PDF export classes do not flatten it into a paper report.
 - The most important content is visually dominant.
 - The artifact is useful without the surrounding chat.
 - The page palette matches the requested subject.
@@ -154,11 +171,11 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Components are imported from `.canvas` shadcn source, not reimplemented.
 - The title, system-aware theme toggle, Save as PDF button, and conditional back-to-top control come from `CanvasShell`.
 - Charts and tables are self-describing.
-- Every chart's exact values are visible in PDF output.
-- Filter UI is hidden in PDF output; the printed view shows every category with labeled separations, not only the active filter.
+- Every chart's exact values are visible in the PDF snapshot.
+- Filter UI stays on screen and is hidden in the PDF snapshot; the snapshot shows every category with labeled separations, not only the active filter.
 - PDF page breaks fall between h2-level topics. Headings are not left at the bottom of a page; cards, charts, and disclosure items are not split when they fit.
 - The PDF header shows the page title and no header actions.
-- PDF pages keep a 12mm top and bottom inset; horizontal spacing stays on the printed sections.
+- PDF pages keep a 12mm top and bottom inset; horizontal spacing stays on the exported sections.
 - No card, chart, table, SVG, or text block overflows or is clipped at either page edge. First and last line/area points stay fully visible. Tall charts (many horizontal bars, portrait aspect) still show the full plot, tick labels, and axis titles — they are not cut at the page bottom.
 - The source typechecks and builds.
 - HTML mode produces one self-contained `.html` file.
