@@ -1,0 +1,6 @@
+.canvas/
+.cursor/
+*.canvas.tsx
+*.html
+.DS_Store
+node_modules/
