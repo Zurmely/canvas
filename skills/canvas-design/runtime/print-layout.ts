@@ -421,6 +421,33 @@ function capCharts(orientation: PrintOrientation, pageInnerH: number, restorer: 
   })
 }
 
+function isSubstantialBand(band: Band) {
+  return (
+    band.kind === "chart-band" ||
+    band.kind === "keep" ||
+    band.kind === "card-band" ||
+    band.kind === "table" ||
+    bandHeight(band) >= MIN_BAND_PX
+  )
+}
+
+function headingKeepHeight(bands: Band[], index: number) {
+  let height = bandHeight(bands[index])
+
+  for (let offset = 1; offset <= 4 && index + offset < bands.length; offset += 1) {
+    const band = bands[index + offset]
+    if (band.kind === "heading") {
+      break
+    }
+    height += bandHeight(band)
+    if (isSubstantialBand(band)) {
+      break
+    }
+  }
+
+  return height
+}
+
 function applyPageStarts(bands: Band[], firstPageInnerH: number, pageInnerH: number, restorer: Restorer) {
   let capacity = firstPageInnerH
   let used = 0
@@ -433,22 +460,19 @@ function applyPageStarts(bands: Band[], firstPageInnerH: number, pageInnerH: num
 
   for (let index = 0; index < bands.length; index += 1) {
     const band = bands[index]
-    const next = bands[index + 1]
-    let height = bandHeight(band)
+    let height = band.kind === "heading" ? headingKeepHeight(bands, index) : bandHeight(band)
     let startEl = band.elements[0]
     if (!startEl) {
       continue
     }
 
-    if (band.kind === "heading" && next) {
-      height += bandHeight(next)
-    }
-
     const remaining = capacity - used
+    const headingNeedsRoom =
+      band.kind === "heading" && used > 0 && remaining < Math.max(MIN_BAND_PX, height)
     const needsNewPage =
       used > 0 &&
-      height > remaining &&
-      (remaining < MIN_BAND_PX || band.kind !== "table")
+      (headingNeedsRoom ||
+        (height > remaining && (remaining < MIN_BAND_PX || band.kind !== "table")))
 
     if (needsNewPage) {
       startPage(startEl)
@@ -477,7 +501,7 @@ function applyPageSize(orientation: PrintOrientation, restorer: Restorer) {
   const existing = document.getElementById(PAGE_STYLE_ID)
   const style = existing instanceof HTMLStyleElement ? existing : document.createElement("style")
   style.id = PAGE_STYLE_ID
-  style.textContent = `@page { size: ${page.cssSize}; margin: 0; background: var(--background); }`
+  style.textContent = `@page { size: ${page.cssSize}; margin: ${INSET_PX}px; background: var(--background); }`
   if (!existing) {
     document.head.append(style)
     restorer.add(() => style.remove())
@@ -501,10 +525,11 @@ function applyPrintWidth(orientation: PrintOrientation, restorer: Restorer) {
     return
   }
 
-  restorer.setStyle(root, "width", `${page.width}px`)
-  restorer.setStyle(root, "max-width", `${page.width}px`)
+  const innerWidth = page.width - INSET_PX * 2
+  restorer.setStyle(root, "width", `${innerWidth}px`)
+  restorer.setStyle(root, "max-width", `${innerWidth}px`)
   restorer.setStyle(root, "box-sizing", "border-box")
-  restorer.setStyle(root, "padding", `${INSET_PX}px`)
+  restorer.setStyle(root, "padding", "0px")
   restorer.setStyle(root, "margin-left", "auto")
   restorer.setStyle(root, "margin-right", "auto")
 

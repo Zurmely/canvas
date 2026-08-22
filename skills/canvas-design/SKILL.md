@@ -151,7 +151,7 @@ Every canvas must use `CanvasShell`, which provides:
 
 - A top header containing the canvas title.
 - A light/dark toggle in the header. Initial mode and live system changes follow `prefers-color-scheme` until the user toggles explicitly.
-- A top-right **Save as PDF** dropdown with **Portrait 1080×1920** and **Landscape 1920×1080**. That share snapshot expands closed collapsible/accordion sections, raises type to a 24px body with an 18px floor, hides interactive chrome, locks the page size, packs cards and charts into the slide, remasures plots, then calls `window.print()`.
+- A top-right **Save as PDF** dropdown with **Portrait 1080×1920** and **Landscape 1920×1080**. That share snapshot expands closed collapsible/accordion sections, raises type to a 24px body with an 18px floor, hides interactive chrome, locks the page size with inset on every slide, packs cards and charts into the slide, keeps section titles with the following block, remasures plots, then calls `window.print()`.
 - PDF export styles that keep the shell header with the page title only. The theme toggle and Save as PDF action are hidden. The current light or dark theme is preserved. Closed disclosure panels are opened. Tab lists, chevrons, tooltips, and other view-switching controls stay hidden; the snapshot is the complete dataset grouped by those categories. Type is presentation-sized so the PDF reads without zoom. The layout engine chooses page breaks so related cards share a page and leftover empty slides are avoided.
 - A bottom-right back-to-top floating action button only when:
   - document height exceeds `1.5 ×` the viewport height; and
@@ -209,7 +209,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - No `print:text-*` or slide-sized type in the canvas source. On-screen type stays compact.
 - The PDF snapshot is readable at 1080×1920 / 1920×1080 fit-to-window without zoom. Body copy is presentation-sized; no leftover tab lists, chevrons, or tooltips.
 - The PDF header shows the page title and no header actions.
-- No card, chart, table, SVG, or text block overflows or is clipped at either page edge. First and last line/area points stay fully visible.
+- No card, chart, table, SVG, or text block overflows or is clipped at either page edge. First and last line/area points stay fully visible. Section titles are not stranded on a page break or flush against the slide edge.
 - The source typechecks and builds.
 - HTML mode produces one self-contained `.html` file.
 - The final response links only the page that matches how the user asked to receive it.

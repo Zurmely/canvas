@@ -87,7 +87,7 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 The priority is screen. **Save as PDF** is a share snapshot, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the layout engine cannot infer. Do not reverse that order.
 
-`CanvasShell` offers **Portrait 1080×1920** and **Landscape 1920×1080**. At export it expands disclosures, raises root type to a 24px slide-deck scale with an 18px floor, hides interactive chrome (tab lists, chevrons, tooltips, selects), locks `@page` to that size, packs compact cards into a grid, places charts one-up or two-up, caps plot height to the remaining slot, remasures Recharts, then calls `window.print()`. The user should keep **Save as PDF** and not override the paper size.
+`CanvasShell` offers **Portrait 1080×1920** and **Landscape 1920×1080**. At export it expands disclosures, raises root type to a 24px slide-deck scale with an 18px floor, hides interactive chrome (tab lists, chevrons, tooltips, selects), locks `@page` to that size with inset on every slide, packs compact cards into a grid, places charts one-up or two-up, caps plot height to the remaining slot, remasures Recharts, then calls `window.print()`. Section titles stay with the following caption/chart; they are not left on a page break. The user should keep **Save as PDF** and not override the paper size or margins.
 
 Do not author `print:text-*` or enlarge on-screen type for the PDF. Presentation type is runtime-owned so the live page stays a compact dashboard.
 

@@ -247,6 +247,14 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
     page-break-inside: avoid;
   }
 
+  h1 + *,
+  h2 + *,
+  h3 + *,
+  h4 + * {
+    break-before: avoid-page;
+    page-break-before: avoid;
+  }
+
   p,
   li {
     orphans: 3;
