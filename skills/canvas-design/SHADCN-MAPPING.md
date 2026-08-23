@@ -24,7 +24,7 @@ Read generated source or current shadcn documentation for exact APIs. Components
 - Important feedback → `Alert`
 - Data → `Table` or a purpose-built data table
 - Forms → `Field`, `Input`, `Textarea`, `Checkbox`, `Switch`, `Select`
-- Navigation within one artifact → `Tabs`
+- Navigation within one artifact → `Tabs`. After installing `tabs`, keep every `TabsContent` mounted (`forceMount` / `keepMounted`, matching the installed component) so inactive panels stay in the DOM for PDF export.
 - Secondary disclosure → `Collapsible` or `Accordion`. After installing `collapsible`, set `keepMounted` on `CollapsibleContent` so closed panels remain in the DOM for PDF export.
 - Modal task → `Dialog` or `Sheet`
 - Progress → `Progress`
@@ -74,7 +74,7 @@ Use cards for named entities, grouped controls, or independently scannable units
 
 ### Tables and dense data
 
-Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. For the PDF snapshot, hide those controls with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing. Optional `canvas-print-keep` per category. Do not author page breaks.
+Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. Tabs print as labeled sections automatically. For filter controls, hide them with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing. Do not author page breaks.
 
 ### Icons
 
@@ -98,4 +98,4 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Avoid arbitrary hex values when a semantic variable applies.
 - Use chart variables for categorical data.
 - Keep custom CSS in the canvas source only when Tailwind utilities cannot express the requirement.
-- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts. PDF type (24px root, 18px floor) and interactive-chrome hiding are runtime-owned. Do not add `print:text-*` in canvas source.
+- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts. Interactive-chrome hiding and expanding disclosures/tabs are runtime-owned. Do not add `print:text-*` in canvas source.

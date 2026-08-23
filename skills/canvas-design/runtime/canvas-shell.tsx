@@ -102,10 +102,10 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
               />
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => runPrint("portrait")}>
-                  Portrait 1080×1920
+                  Portrait
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => runPrint("landscape")}>
-                  Landscape 1920×1080
+                  Landscape
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

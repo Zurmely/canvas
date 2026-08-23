@@ -317,7 +317,7 @@ write(
   "config.json",
   JSON.stringify(
     {
-      schemaVersion: 21,
+      schemaVersion: 22,
       framework: "vite-react-typescript",
       outputMode: modeArg,
       themeMode: themeArg,

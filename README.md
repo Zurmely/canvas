@@ -57,7 +57,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
 - Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
-- Save as PDF in portrait (1080×1920) or landscape (1920×1080), with a layout engine that packs cards and charts onto those pages
+- Save as PDF of the whole page (portrait or landscape), with interactions flattened so accordions, tabs, and similar controls read as static sections
 - Optional one-file HTML export with no sibling assets
 
 ## Layout
@@ -72,7 +72,7 @@ Re-running the same command overwrites the installed skill with the latest from 
         ├── SCAFFOLD.md           # First-use runtime setup
         ├── SHADCN-MAPPING.md     # Component selection
         ├── CHARTS.md             # Chart guidance
-        ├── runtime/              # CanvasShell, print CSS, and PDF layout engine
+        ├── runtime/              # CanvasShell, print CSS, and PDF export
         │   ├── dropdown-menu.tsx
         │   ├── canvas-shell.tsx
         │   ├── print-layout.ts

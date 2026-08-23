@@ -1,34 +1,39 @@
 export type PrintOrientation = "portrait" | "landscape"
 
-export const PAGE_SIZES = {
-  portrait: { width: 1080, height: 1920, cssSize: "11.25in 20in" },
-  landscape: { width: 1920, height: 1080, cssSize: "20in 11.25in" },
+export const PAGE_WIDTHS = {
+  portrait: 1080,
+  landscape: 1920,
 } as const
 
 const INSET_PX = 48
-const COMPACT_MAX_PX = 420
-const MIN_CHART_PX = 240
-const MIN_BAND_PX = 180
-const MIN_FONT_PX = 18
 const PAGE_STYLE_ID = "canvas-print-page-size"
 
 type StyledElement = HTMLElement | SVGElement
-
-type BandKind = "card-band" | "chart-band" | "keep" | "table" | "heading" | "block"
-
-type Band = {
-  kind: BandKind
-  elements: HTMLElement[]
-  parent: HTMLElement | null
-}
 
 type Restorer = {
   add: (fn: () => void) => void
   addClass: (el: Element, className: string) => void
   setAttr: (el: Element, name: string, value: string) => void
+  removeAttr: (el: Element, name: string) => void
   setStyle: (el: StyledElement, prop: string, value: string) => void
   restore: () => void
 }
+
+const INTERACTIVE_TRIGGER_SLOTS = new Set([
+  "alert-dialog-trigger",
+  "combobox-trigger",
+  "context-menu-trigger",
+  "dialog-trigger",
+  "dropdown-menu-trigger",
+  "hover-card-trigger",
+  "menubar-trigger",
+  "navigation-menu-trigger",
+  "popover-trigger",
+  "select-trigger",
+  "sheet-trigger",
+  "tabs-trigger",
+  "tooltip-trigger",
+])
 
 let printing = false
 
@@ -57,7 +62,21 @@ function createRestorer(): Restorer {
         }
       })
     },
-    setStyle(el: StyledElement, prop, value) {
+    removeAttr(el, name) {
+      if (!el.hasAttribute(name)) {
+        return
+      }
+      const previous = el.getAttribute(name)
+      el.removeAttribute(name)
+      fns.push(() => {
+        if (previous === null) {
+          el.setAttribute(name, "")
+        } else {
+          el.setAttribute(name, previous)
+        }
+      })
+    },
+    setStyle(el, prop, value) {
       const previous = el.style.getPropertyValue(prop)
       el.style.setProperty(prop, value)
       fns.push(() => {
@@ -92,453 +111,22 @@ function slot(el: Element, name: string) {
   return el.getAttribute("data-slot") === name
 }
 
-function heightOf(el: HTMLElement) {
-  return el.getBoundingClientRect().height
+function closestSlot(el: Element, name: string) {
+  return el.closest(`[data-slot="${name}"]`)
 }
 
-function isHidden(el: Element) {
-  if (!(el instanceof HTMLElement)) {
-    return true
-  }
-  if (el.classList.contains("canvas-print-hidden") || el.closest(".canvas-print-hidden")) {
-    return true
-  }
-  const style = window.getComputedStyle(el)
-  if (style.display === "none" || style.visibility === "hidden") {
-    return true
-  }
-  const rect = el.getBoundingClientRect()
-  return rect.width < 1 && rect.height < 1
+function isPrintHidden(el: Element) {
+  return Boolean(el.closest(".canvas-print-hidden"))
 }
 
-function visibleChildren(el: HTMLElement) {
-  return Array.from(el.children).filter((child): child is HTMLElement => {
-    return child instanceof HTMLElement && !isHidden(child)
-  })
-}
-
-function hasChart(el: HTMLElement) {
-  return slot(el, "chart") || Boolean(el.querySelector('[data-slot="chart"]'))
-}
-
-function isHeading(el: HTMLElement) {
-  return /^H[1-4]$/.test(el.tagName)
-}
-
-function isKeep(el: HTMLElement) {
-  return el.classList.contains("canvas-print-keep")
-}
-
-function isCard(el: HTMLElement) {
-  return slot(el, "card")
-}
-
-function isAlert(el: HTMLElement) {
-  return slot(el, "alert")
-}
-
-function isTableHost(el: HTMLElement) {
-  if (el.tagName === "TABLE") {
-    return true
-  }
-  const table = el.querySelector("table")
-  if (!table) {
-    return false
-  }
-  return (
-    el.classList.contains("canvas-print-only") ||
-    el.querySelector(":scope > table") !== null ||
-    heightOf(table) > heightOf(el) * 0.6
-  )
-}
-
-function isChartUnit(el: HTMLElement) {
-  if (slot(el, "chart")) {
-    return true
-  }
-  if (!hasChart(el)) {
-    return false
-  }
-  if (isKeep(el)) {
-    return true
-  }
-  if (el.querySelector("table")) {
-    return false
-  }
-  return visibleChildren(el).length <= 5 && heightOf(el) < 960
-}
-
-function isCompactUnit(el: HTMLElement): boolean {
-  if (isHeading(el) || isAlert(el) || isTableHost(el) || isKeep(el) || isChartUnit(el)) {
-    return false
-  }
-
-  const kids = visibleChildren(el)
-  if (kids.length >= 2 && kids.every((child) => isCard(child) || isStatCell(child))) {
-    return false
-  }
-
-  const h = heightOf(el)
-  if (h < 8 || h > COMPACT_MAX_PX) {
-    return false
-  }
-
-  if (isCard(el) || isStatCell(el)) {
-    return true
-  }
-
-  if (kids.length === 1 && isCompactUnit(kids[0]) && h <= COMPACT_MAX_PX + 24) {
-    return true
-  }
-
-  if (
-    h <= 160 &&
-    !el.querySelector("section, [data-slot='card'], [data-slot='chart'], table, h1, h2, h3, h4")
-  ) {
-    const text = el.innerText?.trim() ?? ""
-    return text.length > 0 && text.length < 96
-  }
-
-  return false
-}
-
-function isStatCell(el: HTMLElement) {
-  return Boolean(el.querySelector(":scope dt") && el.querySelector(":scope dd"))
-}
-
-function isCardUnit(el: HTMLElement): boolean {
-  if (isHeading(el) || isAlert(el) || isTableHost(el) || isChartUnit(el) || isKeep(el)) {
-    return false
-  }
-  if (isCard(el) || isCompactUnit(el)) {
-    return true
-  }
-  const kids = visibleChildren(el)
-  return kids.length === 1 && isCardUnit(kids[0])
-}
-
-function shouldRecurse(el: HTMLElement) {
-  if (
-    isCard(el) ||
-    isKeep(el) ||
-    isAlert(el) ||
-    isHeading(el) ||
-    isTableHost(el) ||
-    slot(el, "chart") ||
-    isChartUnit(el)
-  ) {
-    return false
-  }
-
-  if (["P", "FIGURE", "BLOCKQUOTE", "PRE", "UL", "OL", "LI", "SPAN", "A", "BUTTON"].includes(el.tagName)) {
-    return false
-  }
-
-  return visibleChildren(el).length > 0
-}
-
-function collectFrom(parent: HTMLElement, into: Band[]) {
-  const kids = visibleChildren(parent)
-  let index = 0
-
-  while (index < kids.length) {
-    const el = kids[index]
-
-    if (isHeading(el)) {
-      into.push({ kind: "heading", elements: [el], parent })
-      index += 1
-      continue
-    }
-
-    if (isCardUnit(el)) {
-      const group = [el]
-      while (index + group.length < kids.length && isCardUnit(kids[index + group.length])) {
-        group.push(kids[index + group.length])
-      }
-      into.push({ kind: "card-band", elements: group, parent })
-      index += group.length
-      continue
-    }
-
-    if (isChartUnit(el)) {
-      const group = [el]
-      while (index + group.length < kids.length && isChartUnit(kids[index + group.length])) {
-        group.push(kids[index + group.length])
-      }
-      into.push({ kind: "chart-band", elements: group, parent })
-      index += group.length
-      continue
-    }
-
-    if (isTableHost(el)) {
-      into.push({ kind: "table", elements: [el], parent })
-      index += 1
-      continue
-    }
-
-    if (isKeep(el)) {
-      into.push({ kind: "keep", elements: [el], parent })
-      index += 1
-      continue
-    }
-
-    if (shouldRecurse(el)) {
-      collectFrom(el, into)
-      index += 1
-      continue
-    }
-
-    into.push({ kind: "block", elements: [el], parent })
-    index += 1
-  }
-}
-
-function mergeSiblingBands(bands: Band[]) {
-  const merged: Band[] = []
-
-  for (const band of bands) {
-    const prev = merged[merged.length - 1]
-    if (
-      prev &&
-      prev.kind === band.kind &&
-      (band.kind === "card-band" || band.kind === "chart-band") &&
-      prev.parent &&
-      prev.parent === band.parent
-    ) {
-      prev.elements.push(...band.elements)
-      continue
-    }
-    merged.push({ ...band, elements: [...band.elements] })
-  }
-
-  return merged
-}
-
-function collectBands(main: HTMLElement) {
-  const bands: Band[] = []
-  collectFrom(main, bands)
-  return mergeSiblingBands(bands)
-}
-
-function bandHeight(band: Band) {
-  if (band.elements.length === 0) {
-    return 0
-  }
-  const rects = band.elements.map((el) => el.getBoundingClientRect())
-  return Math.max(...rects.map((rect) => rect.bottom)) - Math.min(...rects.map((rect) => rect.top))
-}
-
-function cardColumns(orientation: PrintOrientation, count: number, maxItemHeight: number, pageInnerH: number) {
-  if (count <= 1) {
-    return 1
-  }
-  if (maxItemHeight > pageInnerH * 0.45) {
-    return 1
-  }
-  if (orientation === "portrait") {
-    return Math.min(2, count)
-  }
-  return Math.min(count >= 4 ? 4 : 3, count)
-}
-
-function chartColumns(orientation: PrintOrientation, count: number) {
-  if (orientation === "landscape" && count >= 2) {
-    return 2
-  }
-  return 1
-}
-
-function applyBandGrid(band: Band, cols: number, className: string, restorer: Restorer) {
-  const parent = band.parent
-  if (!parent || cols < 1) {
-    return
-  }
-
-  restorer.addClass(parent, className)
-  restorer.setStyle(parent, "--canvas-print-cols", String(cols))
-
-  visibleChildren(parent).forEach((child) => {
-    if (!band.elements.includes(child)) {
-      restorer.addClass(child, "canvas-print-span-all")
-    }
-  })
-}
-
-function markUnits(band: Band, pageInnerH: number, restorer: Restorer) {
-  band.elements.forEach((el) => {
-    if (heightOf(el) <= pageInnerH) {
-      restorer.addClass(el, "canvas-print-unit")
-    }
-  })
-}
-
-function applyBandLayout(
-  bands: Band[],
-  orientation: PrintOrientation,
-  pageInnerH: number,
-  restorer: Restorer,
-) {
-  for (const band of bands) {
-    if (band.kind === "card-band") {
-      const maxItemHeight = Math.max(...band.elements.map((el) => heightOf(el)), 0)
-      const cols = cardColumns(orientation, band.elements.length, maxItemHeight, pageInnerH)
-      applyBandGrid(band, cols, "canvas-print-pack-cards", restorer)
-    } else if (band.kind === "chart-band") {
-      const cols = chartColumns(orientation, band.elements.length)
-      applyBandGrid(band, cols, "canvas-print-pack-charts", restorer)
+function nestingDepth(el: HTMLElement, slotName: string) {
+  let depth = 0
+  for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+    if (slot(parent, slotName)) {
+      depth += 1
     }
   }
-}
-
-function markFittingUnits(bands: Band[], pageInnerH: number, restorer: Restorer) {
-  for (const band of bands) {
-    if (band.kind === "table") {
-      continue
-    }
-    markUnits(band, pageInnerH, restorer)
-  }
-}
-
-function capCharts(orientation: PrintOrientation, pageInnerH: number, restorer: Restorer) {
-  const maxSingle =
-    orientation === "portrait" ? Math.round(pageInnerH * 0.42) : Math.round(pageInnerH * 0.55)
-
-  document.querySelectorAll<HTMLElement>('[data-slot="chart"]').forEach((el) => {
-    if (isHidden(el)) {
-      return
-    }
-    const keep = el.closest(".canvas-print-keep")
-    const extras =
-      keep instanceof HTMLElement ? Math.max(0, heightOf(keep) - heightOf(el)) : 0
-    const twoUp = el.closest(".canvas-print-pack-charts")
-    const cols = twoUp instanceof HTMLElement ? Number.parseInt(twoUp.style.getPropertyValue("--canvas-print-cols") || "1", 10) : 1
-    const cap = Math.max(MIN_CHART_PX, (cols > 1 ? Math.round(maxSingle * 0.9) : maxSingle) - extras)
-    if (heightOf(el) > cap) {
-      restorer.setStyle(el, "height", `${cap}px`)
-      restorer.setStyle(el, "max-height", `${cap}px`)
-      restorer.setStyle(el, "aspect-ratio", "auto")
-    }
-  })
-}
-
-function isSubstantialBand(band: Band) {
-  return (
-    band.kind === "chart-band" ||
-    band.kind === "keep" ||
-    band.kind === "card-band" ||
-    band.kind === "table" ||
-    bandHeight(band) >= MIN_BAND_PX
-  )
-}
-
-function headingKeepHeight(bands: Band[], index: number) {
-  let height = bandHeight(bands[index])
-
-  for (let offset = 1; offset <= 4 && index + offset < bands.length; offset += 1) {
-    const band = bands[index + offset]
-    if (band.kind === "heading") {
-      break
-    }
-    height += bandHeight(band)
-    if (isSubstantialBand(band)) {
-      break
-    }
-  }
-
-  return height
-}
-
-function applyPageStarts(bands: Band[], firstPageInnerH: number, pageInnerH: number, restorer: Restorer) {
-  let capacity = firstPageInnerH
-  let used = 0
-
-  const startPage = (el: HTMLElement) => {
-    restorer.addClass(el, "canvas-print-page-start")
-    capacity = pageInnerH
-    used = 0
-  }
-
-  for (let index = 0; index < bands.length; index += 1) {
-    const band = bands[index]
-    let height = band.kind === "heading" ? headingKeepHeight(bands, index) : bandHeight(band)
-    let startEl = band.elements[0]
-    if (!startEl) {
-      continue
-    }
-
-    const remaining = capacity - used
-    const headingNeedsRoom =
-      band.kind === "heading" && used > 0 && remaining < Math.max(MIN_BAND_PX, height)
-    const needsNewPage =
-      used > 0 &&
-      (headingNeedsRoom ||
-        (height > remaining && (remaining < MIN_BAND_PX || band.kind !== "table")))
-
-    if (needsNewPage) {
-      startPage(startEl)
-    }
-
-    if (band.kind === "table" && height > capacity - used) {
-      const leftover = Math.max(0, height - (capacity - used))
-      used = leftover % pageInnerH
-      capacity = pageInnerH
-      continue
-    }
-
-    if (band.kind === "heading") {
-      used += bandHeight(band)
-      continue
-    }
-
-    used += bandHeight(band)
-  }
-}
-
-function applyPageSize(orientation: PrintOrientation, restorer: Restorer) {
-  const page = PAGE_SIZES[orientation]
-  restorer.setAttr(document.documentElement, "data-canvas-print-orient", orientation)
-
-  const existing = document.getElementById(PAGE_STYLE_ID)
-  const style = existing instanceof HTMLStyleElement ? existing : document.createElement("style")
-  style.id = PAGE_STYLE_ID
-  style.textContent = `@page { size: ${page.cssSize}; margin: ${INSET_PX}px; background: var(--background); }`
-  if (!existing) {
-    document.head.append(style)
-    restorer.add(() => style.remove())
-  } else {
-    const previous = existing.textContent
-    restorer.add(() => {
-      if (previous) {
-        existing.textContent = previous
-      } else {
-        existing.remove()
-      }
-    })
-  }
-}
-
-function applyPrintWidth(orientation: PrintOrientation, restorer: Restorer) {
-  const page = PAGE_SIZES[orientation]
-  const root = document.querySelector(".canvas-root")
-  const main = root?.querySelector(":scope > main")
-  if (!(root instanceof HTMLElement)) {
-    return
-  }
-
-  const innerWidth = page.width - INSET_PX * 2
-  restorer.setStyle(root, "width", `${innerWidth}px`)
-  restorer.setStyle(root, "max-width", `${innerWidth}px`)
-  restorer.setStyle(root, "box-sizing", "border-box")
-  restorer.setStyle(root, "padding", "0px")
-  restorer.setStyle(root, "margin-left", "auto")
-  restorer.setStyle(root, "margin-right", "auto")
-
-  if (main instanceof HTMLElement) {
-    restorer.setStyle(main, "width", "100%")
-    restorer.setStyle(main, "max-width", "none")
-    restorer.setStyle(main, "padding-left", "0px")
-    restorer.setStyle(main, "padding-right", "0px")
-  }
+  return depth
 }
 
 async function expandDisclosures(restorer: Restorer) {
@@ -550,9 +138,11 @@ async function expandDisclosures(restorer: Restorer) {
         '[data-slot="collapsible-trigger"], [data-slot="accordion-trigger"]',
       ),
     ).filter((trigger) => {
+      if (isPrintHidden(trigger)) {
+        return false
+      }
       const root =
-        trigger.closest("[data-slot='collapsible']") ??
-        trigger.closest("[data-slot='accordion-item']")
+        closestSlot(trigger, "collapsible") ?? closestSlot(trigger, "accordion-item")
       return root?.hasAttribute("data-closed") ?? false
     })
 
@@ -573,25 +163,239 @@ async function expandDisclosures(restorer: Restorer) {
   })
 }
 
-function pageInnerHeight(orientation: PrintOrientation) {
-  return PAGE_SIZES[orientation].height - INSET_PX * 2
+async function expandAriaDisclosures(restorer: Restorer) {
+  const clicked: HTMLElement[] = []
+
+  for (let pass = 0; pass < 8; pass += 1) {
+    const triggers = Array.from(
+      document.querySelectorAll<HTMLElement>('[aria-expanded="false"]'),
+    ).filter((trigger) => {
+      if (isPrintHidden(trigger)) {
+        return false
+      }
+      const triggerSlot = trigger.getAttribute("data-slot") ?? ""
+      return !INTERACTIVE_TRIGGER_SLOTS.has(triggerSlot)
+    })
+
+    if (triggers.length === 0) {
+      break
+    }
+
+    for (const trigger of triggers) {
+      trigger.click()
+      clicked.push(trigger)
+    }
+
+    await waitForPaint()
+  }
+
+  restorer.add(() => {
+    clicked.reverse().forEach((trigger) => trigger.click())
+  })
 }
 
-function enforceMinFontSize(minPx: number, restorer: Restorer) {
+function expandDetails(restorer: Restorer) {
+  document.querySelectorAll("details").forEach((el) => {
+    if (!(el instanceof HTMLDetailsElement) || el.open || isPrintHidden(el)) {
+      return
+    }
+    el.open = true
+    restorer.add(() => {
+      el.open = false
+    })
+  })
+}
+
+function tabKey(el: HTMLElement) {
+  return el.getAttribute("data-value") ?? el.getAttribute("value") ?? el.getAttribute("id")
+}
+
+function triggerLabel(el: HTMLElement) {
+  return (el.innerText || el.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim()
+}
+
+function isActiveTrigger(el: HTMLElement) {
+  const state = el.getAttribute("data-state")
+  if (state === "active" || state === "open") {
+    return true
+  }
+  if (el.getAttribute("aria-selected") === "true") {
+    return true
+  }
+  const selected = el.getAttribute("data-selected")
+  return selected !== null && selected !== "false"
+}
+
+function tabTriggers(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>('[data-slot="tabs-trigger"]')).filter(
+    (trigger) => closestSlot(trigger, "tabs") === root,
+  )
+}
+
+function tabPanels(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>('[data-slot="tabs-content"]')).filter(
+    (panel) => closestSlot(panel, "tabs") === root,
+  )
+}
+
+function revealPanel(panel: HTMLElement, restorer: Restorer) {
+  if (panel.hidden) {
+    panel.hidden = false
+    restorer.add(() => {
+      panel.hidden = true
+    })
+  }
+  restorer.removeAttr(panel, "hidden")
+  restorer.removeAttr(panel, "inert")
+  const state = panel.getAttribute("data-state")
+  if (state && state !== "active" && state !== "open") {
+    restorer.setAttr(panel, "data-state", "active")
+  }
+  restorer.setStyle(panel, "display", "block")
+  restorer.setStyle(panel, "height", "auto")
+  restorer.setStyle(panel, "max-height", "none")
+  restorer.setStyle(panel, "overflow", "visible")
+  restorer.setStyle(panel, "opacity", "1")
+  restorer.setStyle(panel, "visibility", "visible")
+  restorer.setStyle(panel, "position", "static")
+}
+
+function insertTabHeading(panel: HTMLElement, label: string, restorer: Restorer) {
+  if (!label) {
+    return
+  }
+
+  const firstHeading = panel.querySelector("h1, h2, h3, h4")
+  if (firstHeading && (firstHeading.textContent ?? "").trim() === label) {
+    return
+  }
+
+  const heading = document.createElement("h2")
+  heading.className = "canvas-print-tab-heading"
+  heading.textContent = label
+  panel.insertBefore(heading, panel.firstChild)
+  restorer.add(() => heading.remove())
+}
+
+async function mountTabPanels(triggers: HTMLElement[]) {
+  const original = triggers.find(isActiveTrigger) ?? triggers[0]
+
+  for (const trigger of triggers) {
+    if (isActiveTrigger(trigger)) {
+      continue
+    }
+    trigger.click()
+    await waitForPaint()
+  }
+
+  if (original && !isActiveTrigger(original)) {
+    original.click()
+    await waitForPaint()
+  }
+}
+
+async function expandTabs(restorer: Restorer) {
+  const roots = Array.from(document.querySelectorAll<HTMLElement>('[data-slot="tabs"]'))
+    .filter((root) => !isPrintHidden(root))
+    .sort((left, right) => nestingDepth(right, "tabs") - nestingDepth(left, "tabs"))
+
+  for (const root of roots) {
+    const triggers = tabTriggers(root)
+    if (triggers.length === 0) {
+      continue
+    }
+
+    await mountTabPanels(triggers)
+
+    const list = root.querySelector('[data-slot="tabs-list"]')
+    if (list instanceof HTMLElement) {
+      restorer.addClass(list, "canvas-print-hidden")
+    }
+
+    const panels = tabPanels(root)
+    const panelsByKey = new Map(
+      panels
+        .map((panel) => [tabKey(panel), panel] as const)
+        .filter((entry): entry is readonly [string, HTMLElement] => Boolean(entry[0])),
+    )
+
+    triggers.forEach((trigger, index) => {
+      const key = tabKey(trigger)
+      const panel = (key ? panelsByKey.get(key) : undefined) ?? panels[index]
+      if (!panel) {
+        return
+      }
+      revealPanel(panel, restorer)
+      insertTabHeading(panel, triggerLabel(trigger), restorer)
+    })
+
+    for (const panel of panels) {
+      revealPanel(panel, restorer)
+    }
+  }
+}
+
+function applyPrintWidth(orientation: PrintOrientation, restorer: Restorer) {
   const root = document.querySelector(".canvas-root")
+  const main = root?.querySelector(":scope > main")
   if (!(root instanceof HTMLElement)) {
     return
   }
 
-  const nodes = [root, ...Array.from(root.querySelectorAll("*"))]
-  for (const el of nodes) {
-    if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) {
-      continue
-    }
-    const size = Number.parseFloat(window.getComputedStyle(el).fontSize)
-    if (Number.isFinite(size) && size > 0 && size < minPx) {
-      restorer.setStyle(el, "font-size", `${minPx}px`)
-    }
+  const innerWidth = PAGE_WIDTHS[orientation] - INSET_PX * 2
+
+  restorer.setStyle(document.documentElement, "height", "auto")
+  restorer.setStyle(document.body, "height", "auto")
+  restorer.setStyle(document.documentElement, "overflow", "visible")
+  restorer.setStyle(document.body, "overflow", "visible")
+
+  restorer.setStyle(root, "width", `${innerWidth}px`)
+  restorer.setStyle(root, "max-width", `${innerWidth}px`)
+  restorer.setStyle(root, "min-height", "auto")
+  restorer.setStyle(root, "box-sizing", "border-box")
+  restorer.setStyle(root, "padding", "0px")
+  restorer.setStyle(root, "margin-left", "auto")
+  restorer.setStyle(root, "margin-right", "auto")
+  restorer.setStyle(root, "overflow", "visible")
+
+  if (main instanceof HTMLElement) {
+    restorer.setStyle(main, "width", "100%")
+    restorer.setStyle(main, "max-width", "none")
+    restorer.setStyle(main, "padding-left", "0px")
+    restorer.setStyle(main, "padding-right", "0px")
+    restorer.setStyle(main, "overflow", "visible")
+  }
+}
+
+function applyWholePageSize(
+  orientation: PrintOrientation,
+  root: HTMLElement,
+  restorer: Restorer,
+) {
+  const pageWidth = PAGE_WIDTHS[orientation]
+  const contentHeight = Math.ceil(
+    Math.max(root.scrollHeight, root.getBoundingClientRect().height),
+  )
+  const pageHeight = contentHeight + INSET_PX * 2 + 2
+
+  restorer.setAttr(document.documentElement, "data-canvas-print-orient", orientation)
+
+  const existing = document.getElementById(PAGE_STYLE_ID)
+  const style = existing instanceof HTMLStyleElement ? existing : document.createElement("style")
+  style.id = PAGE_STYLE_ID
+  style.textContent = `@page { size: ${pageWidth}px ${pageHeight}px; margin: ${INSET_PX}px; background: var(--background); }`
+  if (!existing) {
+    document.head.append(style)
+    restorer.add(() => style.remove())
+  } else {
+    const previous = existing.textContent
+    restorer.add(() => {
+      if (previous) {
+        existing.textContent = previous
+      } else {
+        existing.remove()
+      }
+    })
   }
 }
 
@@ -604,38 +408,31 @@ export async function printCanvas(orientation: PrintOrientation) {
 
   try {
     restorer.addClass(document.documentElement, "canvas-print-preparing")
-    applyPageSize(orientation, restorer)
     await expandDisclosures(restorer)
+    await expandAriaDisclosures(restorer)
+    expandDetails(restorer)
+    await expandTabs(restorer)
     applyPrintWidth(orientation, restorer)
     await settleLayout()
-    enforceMinFontSize(MIN_FONT_PX, restorer)
-    await settleLayout()
 
-    const main = document.querySelector(".canvas-root > main")
-    const header = document.querySelector(".canvas-root > .canvas-shell-header")
-    const innerH = pageInnerHeight(orientation)
-    const headerH = header instanceof HTMLElement ? heightOf(header) : 0
-    const firstPageH = Math.max(MIN_BAND_PX, innerH - headerH)
-
-    if (main instanceof HTMLElement) {
-      applyBandLayout(collectBands(main), orientation, innerH, restorer)
-      await settleLayout()
-      capCharts(orientation, innerH, restorer)
-      await settleLayout()
-      const packed = collectBands(main)
-      markFittingUnits(packed, innerH, restorer)
-      applyPageStarts(packed, firstPageH, innerH, restorer)
-    } else {
-      capCharts(orientation, innerH, restorer)
-      await settleLayout()
+    const root = document.querySelector(".canvas-root")
+    if (root instanceof HTMLElement) {
+      applyWholePageSize(orientation, root, restorer)
     }
 
     await new Promise<void>((resolve) => {
-      const onAfterPrint = () => {
-        window.removeEventListener("afterprint", onAfterPrint)
+      let settled = false
+      const finish = () => {
+        if (settled) {
+          return
+        }
+        settled = true
+        window.clearTimeout(timeout)
+        window.removeEventListener("afterprint", finish)
         resolve()
       }
-      window.addEventListener("afterprint", onAfterPrint)
+      const timeout = window.setTimeout(finish, 60_000)
+      window.addEventListener("afterprint", finish)
       window.print()
     })
   } finally {

@@ -2,26 +2,6 @@
   display: none !important;
 }
 
-html:not(.canvas-print-preparing) {
-  font-size: 16px;
-}
-
-html.canvas-print-preparing {
-  font-size: 24px;
-}
-
-html.canvas-print-preparing .canvas-root {
-  line-height: 1.4;
-}
-
-html.canvas-print-preparing .canvas-root > .canvas-shell-header h1 {
-  font-size: 1.5rem !important;
-}
-
-html.canvas-print-preparing [data-slot="chart"] text {
-  font-size: 18px !important;
-}
-
 html.canvas-print-preparing .canvas-print-hidden {
   display: none !important;
 }
@@ -30,39 +10,73 @@ html.canvas-print-preparing .canvas-print-only {
   display: block !important;
 }
 
+html.canvas-print-preparing,
+html.canvas-print-preparing body,
+html.canvas-print-preparing .canvas-root {
+  height: auto !important;
+  overflow: visible !important;
+}
+
 html.canvas-print-preparing [data-slot="dropdown-menu-content"],
 html.canvas-print-preparing [data-slot="tabs-list"],
+html.canvas-print-preparing [role="tablist"],
 html.canvas-print-preparing [data-slot="select-trigger"],
 html.canvas-print-preparing [data-slot="switch"],
 html.canvas-print-preparing [data-slot="slider"],
 html.canvas-print-preparing [data-slot="popover-content"],
 html.canvas-print-preparing [data-slot="tooltip-content"],
 html.canvas-print-preparing [data-slot="hover-card-content"],
+html.canvas-print-preparing [data-slot="dialog-overlay"],
+html.canvas-print-preparing [data-slot="dialog-content"],
+html.canvas-print-preparing [data-slot="sheet-overlay"],
+html.canvas-print-preparing [data-slot="sheet-content"],
 html.canvas-print-preparing [data-slot="chart"] .recharts-tooltip-wrapper,
 html.canvas-print-preparing [data-slot="collapsible-trigger"] svg,
 html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
   display: none !important;
 }
 
-.canvas-print-pack-cards {
-  display: grid !important;
-  grid-template-columns: repeat(var(--canvas-print-cols, 2), minmax(0, 1fr)) !important;
-  gap: 1rem !important;
+html.canvas-print-preparing [data-slot="accordion-trigger"],
+html.canvas-print-preparing [data-slot="collapsible-trigger"] {
+  cursor: default;
+  pointer-events: none;
 }
 
-.canvas-print-pack-charts {
-  display: grid !important;
-  grid-template-columns: repeat(var(--canvas-print-cols, 1), minmax(0, 1fr)) !important;
-  gap: 1.5rem !important;
+html.canvas-print-preparing [data-slot="tabs-content"],
+html.canvas-print-preparing [data-slot="collapsible-content"],
+html.canvas-print-preparing [data-slot="accordion-content"] {
+  display: block !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: static !important;
+  --collapsible-panel-height: auto !important;
+  --collapsible-panel-width: auto !important;
+  --radix-accordion-content-height: auto !important;
+  --radix-collapsible-content-height: auto !important;
 }
 
-.canvas-print-span-all {
-  grid-column: 1 / -1 !important;
+html.canvas-print-preparing [data-slot="tabs-content"][hidden],
+html.canvas-print-preparing [data-slot="collapsible-content"][hidden],
+html.canvas-print-preparing [data-slot="accordion-content"][hidden] {
+  display: block !important;
+}
+
+html.canvas-print-preparing .canvas-print-tab-heading {
+  margin: 1.25rem 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+html.canvas-print-preparing .canvas-print-tab-heading:first-child {
+  margin-top: 0;
 }
 
 @media print {
   html {
-    font-size: 24px;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -86,12 +100,10 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
 
   html,
   body {
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  .canvas-root {
-    line-height: 1.4;
+    overflow: visible !important;
   }
 
   .canvas-print-hidden {
@@ -104,20 +116,27 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
 
   [data-slot="dropdown-menu-content"],
   [data-slot="tabs-list"],
+  [role="tablist"],
   [data-slot="select-trigger"],
   [data-slot="switch"],
   [data-slot="slider"],
   [data-slot="popover-content"],
   [data-slot="tooltip-content"],
   [data-slot="hover-card-content"],
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-content"],
+  [data-slot="sheet-overlay"],
+  [data-slot="sheet-content"],
   [data-slot="chart"] .recharts-tooltip-wrapper,
   [data-slot="collapsible-trigger"] svg,
   [data-slot="accordion-trigger"] svg {
     display: none !important;
   }
 
-  [data-slot="chart"] text {
-    font-size: 18px !important;
+  [data-slot="accordion-trigger"],
+  [data-slot="collapsible-trigger"] {
+    cursor: default;
+    pointer-events: none;
   }
 
   .canvas-root > .canvas-shell-header {
@@ -132,8 +151,6 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
     background: var(--background) !important;
     background-color: var(--background) !important;
     overflow: visible !important;
-    break-inside: avoid-page;
-    page-break-inside: avoid;
   }
 
   .canvas-root > .canvas-shell-header > div {
@@ -147,7 +164,6 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
     overflow: visible !important;
     text-overflow: unset !important;
     white-space: normal !important;
-    font-size: 1.5rem !important;
   }
 
   .canvas-root > main {
@@ -160,16 +176,6 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
   .canvas-root {
     min-height: auto !important;
     overflow: visible !important;
-  }
-
-  .canvas-print-page-start {
-    break-before: page !important;
-    page-break-before: always !important;
-  }
-
-  .canvas-print-unit {
-    break-inside: avoid-page;
-    page-break-inside: avoid;
   }
 
   [data-slot="card"] {
@@ -199,6 +205,7 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
     overflow: visible !important;
   }
 
+  [data-slot="tabs-content"],
   [data-slot="collapsible-content"],
   [data-slot="accordion-content"] {
     display: block !important;
@@ -207,13 +214,28 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
     overflow: visible !important;
     opacity: 1 !important;
     visibility: visible !important;
+    position: static !important;
     --collapsible-panel-height: auto !important;
     --collapsible-panel-width: auto !important;
+    --radix-accordion-content-height: auto !important;
+    --radix-collapsible-content-height: auto !important;
   }
 
+  [data-slot="tabs-content"][hidden],
   [data-slot="collapsible-content"][hidden],
   [data-slot="accordion-content"][hidden] {
     display: block !important;
+  }
+
+  .canvas-print-tab-heading {
+    margin: 1.25rem 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .canvas-print-tab-heading:first-child {
+    margin-top: 0;
   }
 
   table {
@@ -235,43 +257,5 @@ html.canvas-print-preparing [data-slot="accordion-trigger"] svg {
   img {
     max-width: 100% !important;
     height: auto !important;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    break-after: avoid-page;
-    page-break-after: avoid;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  h1 + *,
-  h2 + *,
-  h3 + *,
-  h4 + * {
-    break-before: avoid-page;
-    page-break-before: avoid;
-  }
-
-  p,
-  li {
-    orphans: 3;
-    widows: 3;
-  }
-
-  thead {
-    display: table-header-group;
-  }
-
-  tfoot {
-    display: table-footer-group;
-  }
-
-  tr,
-  img {
-    break-inside: avoid-page;
-    page-break-inside: avoid;
   }
 }

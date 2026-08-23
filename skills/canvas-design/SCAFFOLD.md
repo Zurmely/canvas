@@ -21,10 +21,10 @@ The script:
 3. Installs current React, Vite, Tailwind CSS, shadcn, and single-file build dependencies.
 4. Initializes shadcn for Vite.
 5. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
-6. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `21`).
-7. Copies `CanvasShell`, print CSS, and the PDF layout engine from the skill's `runtime/` templates, plus the single-file build utility.
+6. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `22`).
+7. Copies `CanvasShell`, print CSS, and the PDF export from the skill's `runtime/` templates, plus the single-file build utility.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell/print files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19` or `20` with valid mode and look syncs in place to `21`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell/print files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, or `21` with valid mode and look syncs in place to `22`.
 
 ## Reset a broken setup
 
@@ -85,26 +85,24 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 ## PDF export (not print design)
 
-The priority is screen. **Save as PDF** is a share snapshot, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the layout engine cannot infer. Do not reverse that order.
+The priority is screen. **Save as PDF** is a share snapshot of the live page, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the export cannot infer. Do not reverse that order.
 
-`CanvasShell` offers **Portrait 1080×1920** and **Landscape 1920×1080**. At export it expands disclosures, raises root type to a 24px slide-deck scale with an 18px floor, hides interactive chrome (tab lists, chevrons, tooltips, selects), locks `@page` to that size with inset on every slide, packs compact cards into a grid, places charts one-up or two-up, caps plot height to the remaining slot, remasures Recharts, then calls `window.print()`. Section titles stay with the following caption/chart; they are not left on a page break. The user should keep **Save as PDF** and not override the paper size or margins.
+`CanvasShell` offers **Portrait** (1080 wide) and **Landscape** (1920 wide). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, hides interactive chrome (tab lists, chevrons, tooltips, selects), sizes one `@page` to the full canvas (chosen width, content height, with inset), remasures Recharts, then calls `window.print()`. There are no slides and no authored page breaks. The user should keep **Save as PDF** and not override the paper size or margins.
 
-Do not author `print:text-*` or enlarge on-screen type for the PDF. Presentation type is runtime-owned so the live page stays a compact dashboard.
+Do not author `print:text-*` or enlarge on-screen type for the PDF. The snapshot keeps on-screen type.
 
 Required marks:
 
-- `canvas-print-only` — hidden on screen and visible in the PDF snapshot (chart value tables; full unfiltered listings).
-- `canvas-print-hidden` — visible on screen and hidden in the PDF snapshot (filters, tab bars used as filters).
+- `canvas-print-only` — hidden on screen and visible in the PDF snapshot (chart value tables; full unfiltered filter listings).
+- `canvas-print-hidden` — visible on screen and hidden in the PDF snapshot (filters and other view switchers that are not tabs).
 
-Optional:
+Do not use `canvas-print-section`, `canvas-print-flow`, or `canvas-print-keep`. Do not author page breaks. Do not flatten a multi-column screen layout. Those older classes are ignored.
 
-- `canvas-print-keep` — heading plus chart (and source caption) that should stay together. Leave the value table outside that wrapper.
+Tabs stay on screen. Keep every `TabsContent` mounted so the export can print all panels as labeled sections. Do not duplicate tab panels as `canvas-print-only` content.
 
-Do not use `canvas-print-section` or `canvas-print-flow`. Do not author page breaks. Do not flatten a multi-column screen layout. `canvas-print-section` / `canvas-print-flow` left on older canvases are ignored.
+Filter controls that slice data belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Do not leave the PDF showing only the currently selected slice.
 
-Filters, tab bars used as filters, and other view switchers belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Optional `canvas-print-keep` per category. Do not leave the PDF showing only the currently selected slice.
-
-Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Print CSS may set `font-size` on `[data-slot="chart"] text` so ticks and axis titles hit the 18px floor. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the layout engine already constrains width and chart height before print.
+Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the export already constrains width before print.
 
 ## Add shadcn components
 
@@ -128,7 +126,7 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 21`.
+- `.canvas/config.json` has `schemaVersion: 22`.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.
