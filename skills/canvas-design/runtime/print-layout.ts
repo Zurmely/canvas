@@ -1,9 +1,5 @@
-import { toPng } from "html-to-image"
-import { jsPDF } from "jspdf"
-
 const PX_TO_MM = 25.4 / 96
-const MAX_PDF_MM = 14400
-const MAX_CANVAS_PX = 16384
+const MAX_PAGE_MM = 14400
 const OVERFLOW_EPSILON = 1
 const SCROLL_OVERFLOW = new Set(["auto", "scroll"])
 const CLIP_OVERFLOW = new Set(["auto", "scroll", "hidden"])
@@ -39,6 +35,7 @@ let printing = false
 
 function createRestorer(): Restorer {
   const fns: Array<() => void> = []
+  let restored = false
 
   return {
     add(fn) {
@@ -88,23 +85,27 @@ function createRestorer(): Restorer {
       })
     },
     restore() {
+      if (restored) {
+        return
+      }
+      restored = true
       fns.reverse().forEach((fn) => fn())
     },
   }
 }
 
-async function waitForPaint() {
+async function waitForPaint(scope: Window = window) {
   await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    scope.requestAnimationFrame(() => scope.requestAnimationFrame(() => resolve()))
   })
 }
 
-async function settleLayout() {
-  await waitForPaint()
+async function settleLayout(scope: Window = window) {
+  await waitForPaint(scope)
   await new Promise<void>((resolve) => {
-    window.setTimeout(resolve, 150)
+    scope.setTimeout(resolve, 150)
   })
-  await waitForPaint()
+  await waitForPaint(scope)
 }
 
 function slot(el: Element, name: string) {
@@ -123,6 +124,21 @@ function isChartInternal(el: Element) {
   return Boolean(
     el.closest(".recharts-wrapper, .recharts-surface, .recharts-responsive-container"),
   )
+}
+
+function parsePx(value: string) {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function boxExtras(el: HTMLElement) {
+  const style = getComputedStyle(el)
+  return {
+    paddingX: parsePx(style.paddingLeft) + parsePx(style.paddingRight),
+    paddingY: parsePx(style.paddingTop) + parsePx(style.paddingBottom),
+    borderX: parsePx(style.borderLeftWidth) + parsePx(style.borderRightWidth),
+    borderY: parsePx(style.borderTopWidth) + parsePx(style.borderBottomWidth),
+  }
 }
 
 function shouldWrapCode(el: HTMLElement, scrollsX: boolean) {
@@ -389,6 +405,35 @@ function unclipAncestors(el: HTMLElement, root: HTMLElement, restorer: Restorer,
   }
 }
 
+function growAncestors(el: HTMLElement, root: HTMLElement, restorer: Restorer) {
+  let child = el
+  for (let parent = el.parentElement; parent && root.contains(parent); parent = parent.parentElement) {
+    if (isChartInternal(parent) || isPrintHidden(parent)) {
+      child = parent
+      continue
+    }
+
+    const extras = boxExtras(parent)
+    const childRect = child.getBoundingClientRect()
+    const neededWidth = Math.ceil(childRect.width + extras.paddingX + extras.borderX)
+    const neededHeight = Math.ceil(childRect.height + extras.paddingY + extras.borderY)
+
+    if (parent.offsetWidth + OVERFLOW_EPSILON < neededWidth) {
+      restorer.setStyle(parent, "min-width", `${neededWidth}px`)
+      restorer.setStyle(parent, "width", `${neededWidth}px`)
+    }
+    if (parent.offsetHeight + OVERFLOW_EPSILON < neededHeight) {
+      restorer.setStyle(parent, "min-height", `${neededHeight}px`)
+      restorer.setStyle(parent, "height", `${neededHeight}px`)
+    }
+
+    if (parent === root) {
+      break
+    }
+    child = parent
+  }
+}
+
 function expandOverflow(root: HTMLElement, restorer: Restorer) {
   const measured: Array<{
     el: HTMLElement
@@ -441,14 +486,17 @@ function expandOverflow(root: HTMLElement, restorer: Restorer) {
     }
 
     unclipElement(item.el, restorer)
+    const extras = boxExtras(item.el)
     if (item.scrollX) {
-      restorer.setStyle(item.el, "min-width", `${item.scrollWidth}px`)
-      restorer.setStyle(item.el, "width", `${item.scrollWidth}px`)
+      const width = item.scrollWidth + extras.borderX
+      restorer.setStyle(item.el, "min-width", `${width}px`)
+      restorer.setStyle(item.el, "width", `${width}px`)
     }
     if (item.scrollY) {
-      restorer.setStyle(item.el, "height", `${item.scrollHeight}px`)
+      restorer.setStyle(item.el, "height", `${item.scrollHeight + extras.borderY}px`)
     }
     unclipAncestors(item.el, root, restorer, unclipped)
+    growAncestors(item.el, root, restorer)
   }
 }
 
@@ -468,66 +516,182 @@ function prepareCapture(restorer: Restorer, root: HTMLElement) {
   }
 }
 
-function captureSize(root: HTMLElement) {
+function paddedBorderBox(el: HTMLElement) {
+  const rect = el.getBoundingClientRect()
   return {
-    width: Math.max(1, Math.ceil(root.scrollWidth)),
-    height: Math.max(1, Math.ceil(root.scrollHeight)),
+    width: Math.max(1, Math.ceil(Math.max(el.offsetWidth, el.scrollWidth, rect.width))),
+    height: Math.max(1, Math.ceil(Math.max(el.offsetHeight, el.scrollHeight, rect.height))),
   }
 }
 
-function capturePixelRatio(width: number, height: number) {
-  return Math.max(0.5, Math.min(2, MAX_CANVAS_PX / width, MAX_CANVAS_PX / height))
-}
-
-function pdfFilename() {
-  const heading = document.querySelector(".canvas-root h1")
-  const raw = (heading?.textContent || document.title || "canvas").trim()
-  const slug = raw
-    .toLowerCase()
-    .replace(/[^\w\s-]+/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-  return `${slug || "canvas"}.pdf`
-}
-
-async function captureRoot(
-  root: HTMLElement,
-  width: number,
-  height: number,
-  pixelRatio: number,
-) {
-  const backgroundColor = getComputedStyle(root).backgroundColor || "#ffffff"
-  return toPng(root, {
-    width,
-    height,
-    pixelRatio,
-    cacheBust: true,
-    backgroundColor,
-    style: {
-      width: `${width}px`,
-      height: `${height}px`,
-    },
-  })
-}
-
-function downloadPdf(dataUrl: string, widthPx: number, heightPx: number, filename: string) {
+function pageSizeMm(widthPx: number, heightPx: number) {
   let widthMm = widthPx * PX_TO_MM
   let heightMm = heightPx * PX_TO_MM
-  if (widthMm > MAX_PDF_MM || heightMm > MAX_PDF_MM) {
-    const scale = Math.min(MAX_PDF_MM / widthMm, MAX_PDF_MM / heightMm)
+  if (widthMm > MAX_PAGE_MM || heightMm > MAX_PAGE_MM) {
+    const scale = Math.min(MAX_PAGE_MM / widthMm, MAX_PAGE_MM / heightMm)
     widthMm *= scale
     heightMm *= scale
   }
+  return { widthMm, heightMm }
+}
 
-  const pdf = new jsPDF({
-    orientation: widthMm >= heightMm ? "landscape" : "portrait",
-    unit: "mm",
-    format: [widthMm, heightMm],
-    compress: true,
+function copyStyles(fromDoc: Document, toDoc: Document) {
+  fromDoc.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
+    toDoc.head.appendChild(node.cloneNode(true))
   })
-  pdf.addImage(dataUrl, "PNG", 0, 0, widthMm, heightMm)
-  pdf.save(filename)
+
+  const toWin = toDoc.defaultView
+  if (toWin && fromDoc.adoptedStyleSheets?.length) {
+    const clones: CSSStyleSheet[] = []
+    for (const sheet of fromDoc.adoptedStyleSheets) {
+      try {
+        const clone = new toWin.CSSStyleSheet()
+        for (const rule of sheet.cssRules) {
+          clone.insertRule(rule.cssText, clone.cssRules.length)
+        }
+        clones.push(clone)
+      } catch {
+        // Cross-origin or constructable-sheet clone failed; linked/style tags still apply.
+      }
+    }
+    if (clones.length) {
+      toDoc.adoptedStyleSheets = clones
+    }
+  }
+
+  const sourceHtml = fromDoc.documentElement
+  const targetHtml = toDoc.documentElement
+  targetHtml.className = sourceHtml.className
+  targetHtml.classList.add("canvas-print-preparing")
+  const htmlStyle = sourceHtml.getAttribute("style")
+  if (htmlStyle) {
+    targetHtml.setAttribute("style", htmlStyle)
+  }
+  targetHtml.style.colorScheme = sourceHtml.style.colorScheme || getComputedStyle(sourceHtml).colorScheme
+
+  toDoc.body.className = fromDoc.body.className
+  toDoc.body.style.backgroundColor = getComputedStyle(fromDoc.body).backgroundColor
+  toDoc.body.style.color = getComputedStyle(fromDoc.body).color
+  toDoc.body.style.margin = "0"
+}
+
+function injectPageStyle(doc: Document, widthPx: number, heightPx: number, widthMm: number, heightMm: number) {
+  const style = doc.createElement("style")
+  style.setAttribute("data-canvas-print-page", "")
+  style.textContent = `
+    @page { size: ${widthMm}mm ${heightMm}mm; margin: 0; }
+    html, body {
+      width: ${widthPx}px;
+      min-width: ${widthPx}px;
+      height: ${heightPx}px;
+      min-height: ${heightPx}px;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+      background: var(--background);
+    }
+    .canvas-root {
+      width: ${widthPx}px;
+      min-width: ${widthPx}px;
+      min-height: ${heightPx}px;
+    }
+    .canvas-export-snackbar {
+      display: none !important;
+    }
+  `
+  doc.head.appendChild(style)
+}
+
+async function createPrintIframe(root: HTMLElement, widthPx: number, heightPx: number) {
+  const { widthMm, heightMm } = pageSizeMm(widthPx, heightPx)
+  const iframe = document.createElement("iframe")
+  iframe.setAttribute("aria-hidden", "true")
+  iframe.setAttribute("title", "Canvas PDF export")
+  iframe.style.cssText = [
+    "position: fixed",
+    "top: 0",
+    "left: 0",
+    `width: ${widthPx}px`,
+    `height: ${heightPx}px`,
+    "border: 0",
+    "opacity: 0",
+    "pointer-events: none",
+    "z-index: -1",
+  ].join(";")
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentDocument
+  const win = iframe.contentWindow
+  if (!doc || !win) {
+    iframe.remove()
+    throw new Error("Print frame missing")
+  }
+
+  doc.open()
+  doc.write("<!DOCTYPE html><html><head></head><body></body></html>")
+  doc.close()
+
+  copyStyles(document, doc)
+  injectPageStyle(doc, widthPx, heightPx, widthMm, heightMm)
+  doc.body.appendChild(root.cloneNode(true))
+
+  await Promise.all(
+    Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).map(
+      (node) =>
+        new Promise<void>((resolve) => {
+          const link = node as HTMLLinkElement
+          if (link.sheet) {
+            resolve()
+            return
+          }
+          link.addEventListener("load", () => resolve(), { once: true })
+          link.addEventListener("error", () => resolve(), { once: true })
+        }),
+    ),
+  )
+
+  if (doc.fonts?.ready) {
+    await doc.fonts.ready
+  }
+  await settleLayout(win)
+  return iframe
+}
+
+function waitForPrintDialog(win: Window): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false
+    const media = win.matchMedia("print")
+
+    const finish = () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      win.removeEventListener("afterprint", finish)
+      window.removeEventListener("focus", onParentFocus)
+      media.removeEventListener("change", onMedia)
+      window.clearTimeout(timeout)
+      resolve()
+    }
+
+    const onParentFocus = () => {
+      window.setTimeout(finish, 250)
+    }
+
+    const onMedia = (event: MediaQueryListEvent) => {
+      if (!event.matches) {
+        finish()
+      }
+    }
+
+    win.addEventListener("afterprint", finish)
+    media.addEventListener("change", onMedia)
+    window.addEventListener("focus", onParentFocus)
+    const timeout = window.setTimeout(finish, 5 * 60 * 1000)
+
+    win.focus()
+    win.print()
+  })
 }
 
 export async function printCanvas() {
@@ -536,6 +700,7 @@ export async function printCanvas() {
   }
   printing = true
   const restorer = createRestorer()
+  let iframe: HTMLIFrameElement | null = null
 
   try {
     restorer.addClass(document.documentElement, "canvas-print-preparing")
@@ -553,18 +718,19 @@ export async function printCanvas() {
     prepareCapture(restorer, root)
     await settleLayout()
 
-    const { width, height } = captureSize(root)
-    const pixelRatio = capturePixelRatio(width, height)
-    let dataUrl: string
-    try {
-      dataUrl = await captureRoot(root, width, height, pixelRatio)
-    } catch {
-      dataUrl = await captureRoot(root, width, height, 1)
-    }
+    const { width, height } = paddedBorderBox(root)
+    iframe = await createPrintIframe(root, width, height)
+    restorer.restore()
+    await waitForPaint()
 
-    downloadPdf(dataUrl, width, height, pdfFilename())
+    const frameWindow = iframe.contentWindow
+    if (!frameWindow) {
+      throw new Error("Print frame missing")
+    }
+    await waitForPrintDialog(frameWindow)
   } finally {
     restorer.restore()
+    iframe?.remove()
     printing = false
   }
 }

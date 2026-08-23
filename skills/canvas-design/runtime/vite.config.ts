@@ -53,8 +53,6 @@ export default defineConfig({
       "react-dom",
       "react/jsx-runtime",
       "react-is",
-      "html-to-image",
-      "jspdf",
     ],
   },
   server: {

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react"
+import { createPortal, flushSync } from "react-dom"
 import { ArrowUp, Moon, Printer, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -7,6 +8,12 @@ import { printCanvas } from "@/print-layout"
 type CanvasShellProps = {
   title: string
   children: ReactNode
+}
+
+async function waitForPaint() {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
 }
 
 export function CanvasShell({ title, children }: CanvasShellProps) {
@@ -24,7 +31,10 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
       return
     }
     setPdfError(false)
-    setSavingPdf(true)
+    flushSync(() => {
+      setSavingPdf(true)
+    })
+    await waitForPaint()
     try {
       await printCanvas()
     } catch {
@@ -127,15 +137,18 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
         </Button>
       ) : null}
 
-      {snackbarMessage ? (
-        <div
-          aria-live="polite"
-          className="canvas-print-hidden fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-border bg-foreground px-4 py-2 text-sm text-background"
-          role="status"
-        >
-          {snackbarMessage}
-        </div>
-      ) : null}
+      {snackbarMessage
+        ? createPortal(
+            <div
+              aria-live="polite"
+              className="canvas-export-snackbar fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-border bg-foreground px-4 py-2 text-sm text-background"
+              role="status"
+            >
+              {snackbarMessage}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
