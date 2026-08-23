@@ -181,10 +181,6 @@ html.canvas-print-preparing code {
     min-height: 0 !important;
   }
 
-  .canvas-export-snackbar {
-    display: none !important;
-  }
-
   .canvas-root > .canvas-shell-header h1 {
     overflow: visible !important;
     text-overflow: unset !important;

@@ -12,9 +12,9 @@ Create standalone visual artifacts with React, TypeScript, Tailwind CSS, and sha
 
 **The priority is screen.** The canvas is a live page in a browser. Layout, density, interaction, and visual hierarchy are for that screen. Do not design a print document, a paper report, or a sequence of PDF pages and then squeeze it onto a display.
 
-**The print fallback isn't really a print layout, just a share PDF.** `Save as PDF` prepares the live canvas (one page at the live layout width, as tall as the content) and downloads a vector PDF immediately — no print dialog. Text stays selectable and Recharts stay SVG. Scrollable regions are expanded so clipped tables and lists are fully visible (the page may grow wider or taller). A snackbar reports progress; the first export may take a few seconds while the engine loads. Overflow still expands and padding is kept. Layout may differ slightly from Chrome; unsupported chart bits may rasterize as a subtree. The runtime mutes interactions: accordions and collapsibles open, tabs become labeled sections, and interactive chrome is hidden. Mark only screen-only controls and print-only data. Do not design slides, paper, or page breaks.
+**The print fallback isn't really a print layout, just a share PDF.** When the user chooses Save as PDF after creation, a CLI export prepares the built page (one page at the live layout width, as tall as the content) and writes a vector PDF. Text stays selectable and Recharts stay SVG. Scrollable regions are expanded so clipped tables and lists are fully visible (the page may grow wider or taller). Overflow still expands and padding is kept. The runtime mutes interactions: accordions and collapsibles open, tabs become labeled sections, and interactive chrome is hidden. The live page does not include a Save as PDF control. Mark only screen-only controls and print-only data. Do not design slides, paper, or page breaks.
 
-**PDF chrome is runtime-owned.** The live page uses dashboard type (`text-sm`, `text-xs`) and keeps interactions. At export the shell hides interactive chrome, expands closed content and scrollable regions, shows an exporting snackbar, restores the live page, then downloads one custom-sized vector page. Do not author giant type, `print:text-*` utilities, or slide-sized headings.
+**PDF flattening is runtime-owned.** The live page uses dashboard type (`text-sm`, `text-xs`) and keeps interactions. The CLI export hides interactive chrome, expands closed content and scrollable regions, then writes one custom-sized vector page. Do not author giant type, `print:text-*` utilities, or slide-sized headings.
 
 Do not:
 
@@ -27,7 +27,7 @@ Do not:
 
 ## First-use setup
 
-At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `26`.
+At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `27`.
 
 ### Hard gate
 
@@ -55,17 +55,17 @@ Do not ask the user to choose a framework. Use Vite + React + TypeScript: it is 
 
 After the answers, read [SCAFFOLD.md](SCAFFOLD.md), scaffold `.canvas/` with both choices, store them in `.canvas/config.json`, and add `.canvas/` to the workspace `.gitignore`. The ignored folder owns dependencies, shadcn component source, Vite configuration, shared styles, build scripts, and temporary output. Never put a canvas deliverable inside `.canvas/`.
 
-On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, `24`, `25`, or `26`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
+On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, or `27`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
 
 ```bash
 node .cursor/skills/canvas-design/scripts/sync-runtime.mjs <workspace-root>
 ```
 
-Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, the PDF export, Vite config, and the build script, adds `dropdown-menu` if missing, installs any missing runtime deps, and bumps `schemaVersion` to `26`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
+Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, print layout, Vite config, the build script, and the PDF export script, adds `dropdown-menu` if missing, installs any missing runtime deps, removes the retired in-browser PDF engine if present, and bumps `schemaVersion` to `27`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
 
-If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `26`. If schema `18` already has a valid `themeMode`, only run the sync.
+If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `27`. If schema `18` already has a valid `themeMode`, only run the sync.
 
-If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, or `26`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
+If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, or `27`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
 
 If setup is broken or the scaffold schema is incompatible, read the reset section in [SCAFFOLD.md](SCAFFOLD.md). Never delete `.canvas/` without explicit user confirmation.
 
@@ -152,8 +152,8 @@ Every canvas must use `CanvasShell`, which provides:
 
 - A top header containing the canvas title.
 - A light/dark toggle in the header. Initial mode and live system changes follow `prefers-color-scheme` until the user toggles explicitly.
-- A top-right **Save as PDF** button. That export expands closed collapsible/accordion sections and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped content is fully visible, hides interactive chrome, shows an exporting snackbar, then downloads one custom-sized vector page (as tall, and if a region was horizontally scrolled, as wide, as the content) with selectable text and SVG charts. The first export may take a few seconds while the engine loads. Cmd/Ctrl+P runs the same silent download.
-- PDF export styles that keep the shell header with the page title only. The theme toggle, Save as PDF action, snackbar, and back-to-top control are hidden. The current light or dark theme is preserved. Closed disclosure panels are opened. Tab lists, chevrons, tooltips, and other view-switching controls stay hidden; tab panels print as sequential labeled sections. Scrollable tables and lists are expanded onto the page; code blocks wrap instead of stretching. The PDF is one page as tall as the canvas, with container padding kept. On-screen type is kept; do not author slide-sized type.
+- No Save as PDF button, exporting snackbar, or Cmd/Ctrl+P capture. PDF flattening is runtime-owned and runs from the CLI export, not the live page.
+- PDF export styles that keep the shell header with the page title only. The theme toggle and back-to-top control are hidden. Closed disclosure panels are opened. Tab lists, chevrons, tooltips, and other view-switching controls stay hidden; tab panels print as sequential labeled sections. Scrollable tables and lists are expanded onto the page; code blocks wrap instead of stretching. The PDF is one page as tall as the canvas, with container padding kept. On-screen type is kept; do not author slide-sized type. The CLI export writes a light-theme share PDF.
 - A bottom-right back-to-top floating action button only when:
   - document height exceeds `1.5 ×` the viewport height; and
   - the user has scrolled more than `600px`.
@@ -202,7 +202,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - No empty component or placeholder is rendered.
 - The composition is not a uniform stack of cards.
 - Components are imported from `.canvas` shadcn source, not reimplemented.
-- The title, system-aware theme toggle, Save as PDF control, exporting snackbar, and conditional back-to-top control come from `CanvasShell`.
+- The title, system-aware theme toggle, and conditional back-to-top control come from `CanvasShell`. The live page has no Save as PDF control.
 - Charts and tables are self-describing.
 - Every chart's exact values are visible in the PDF snapshot.
 - Filter UI stays on screen and is hidden in the PDF snapshot; the snapshot shows every category with labeled separations, not only the active filter.
@@ -222,7 +222,7 @@ Every message to the user — progress updates, questions, and the completion �
 
 - Say **page**, not HTML, `.html`, self-contained file, or bundle.
 - Say **open in browser**, not preview server, Vite, or “open the HTML.”
-- Do not mention the canvas runtime, config, HTML mode, React mode, design mapping, React source, `.canvas.tsx`, `.canvas/`, TypeScript, typecheck, dependencies, or schema unless the user asks.
+- Do not mention the canvas runtime, config, HTML mode, React mode, design mapping, React source, `.canvas.tsx`, `.canvas/`, TypeScript, typecheck, dependencies, schema, Playwright, or Chromium unless the user asks.
 
 Progress updates stay short and about the page or its content. Check setup and config silently.
 
@@ -235,18 +235,26 @@ Progress updates stay short and about the page or its content. Check setup and c
 
 After the artifact builds successfully and before the final response, call `AskQuestion`. Do not infer whether the user wants it opened.
 
-Ask the same two options in both modes:
+Ask the same three options in both modes:
 
 - **Open page in browser (recommended)** — open the page in the system browser.
 - **Present it only** — do not open anything; then show the page link.
+- **Save as PDF** — do not open the page; write a PDF of the built page, then open that PDF.
 
 Wait for the answer and do exactly what the user selects:
 
 - HTML mode, open: use the platform's normal file opener on the generated `.html`.
 - React mode, open: first check existing terminal processes so a matching server is not duplicated. Start `npm run dev -- --host 127.0.0.1 --port 4173 --strictPort` with `.canvas` as the shell working directory, verify Vite reached a healthy ready state, then open `http://127.0.0.1:4173/`.
 - **Present it only**: perform no external open and start no server.
+- **Save as PDF**: do not open the page and do not start a preview server. Convert the already-built self-contained HTML (HTML mode: the sibling `.html`; React mode: the validated preview under `.canvas/preview/`) with:
 
-If opening fails, keep the successfully created artifact and say the page could not be opened. If port `4173` is occupied by an unrelated process, choose an available local port, start the server there, and use that URL in the link.
+```bash
+node .canvas/scripts/export-pdf.mjs <input.html> <output.pdf>
+```
+
+  Write `<name>.pdf` beside the canvas source. Then open the PDF with the platform's normal file opener. The first PDF export may install a local browser engine under `.canvas/`; do not narrate that. If export fails, keep the page artifact and say the PDF could not be created.
+
+If opening the page fails, keep the successfully created artifact and say the page could not be opened. If port `4173` is occupied by an unrelated process, choose an available local port, start the server there, and use that URL in the link.
 
 ## Required completion format
 
@@ -258,7 +266,7 @@ If they asked to open it:
 Opened in your browser: [Page title](absolute-path-or-url)
 
 - [Two or three concise bullets naming the actual sections or interactions]
-- Light and dark mode, Save as PDF, and back to top on long pages
+- Light and dark mode, and back to top on long pages
 ```
 
 If they asked to present it only:
@@ -267,14 +275,24 @@ If they asked to present it only:
 [Open page](absolute-path-or-url)
 
 - [Two or three concise bullets naming the actual sections or interactions]
-- Light and dark mode, Save as PDF, and back to top on long pages
+- Light and dark mode, and back to top on long pages
+```
+
+If they asked to save as PDF:
+
+```markdown
+Saved as PDF: [Page title](absolute-pdf-path)
+
+- [Two or three concise bullets naming the actual sections]
+- One-page share PDF of the full page
 ```
 
 Link target:
 
-- HTML mode → the generated page file.
+- HTML mode, open or present → the generated page file.
 - React mode after opening → the preview URL that was opened.
 - React mode, present only → the validated preview under `.canvas/preview/`.
+- Save as PDF → the written `.pdf` beside the canvas source. Do not also link the page.
 
 Use an absolute markdown link. Name the page in plain language. Describe what was actually created rather than only saying the task is complete.
 

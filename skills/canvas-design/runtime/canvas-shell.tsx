@@ -1,51 +1,20 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { createPortal, flushSync } from "react-dom"
-import { ArrowUp, Moon, Printer, Sun } from "lucide-react"
+import { ArrowUp, Moon, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { printCanvas, type PdfExportPhase } from "@/print-layout"
 
 type CanvasShellProps = {
   title: string
   children: ReactNode
 }
 
-async function waitForPaint() {
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-  })
-}
-
 export function CanvasShell({ title, children }: CanvasShellProps) {
   const [showBackToTop, setShowBackToTop] = useState(false)
-  const [savingPdf, setSavingPdf] = useState(false)
-  const [pdfPhase, setPdfPhase] = useState<PdfExportPhase | null>(null)
-  const [pdfError, setPdfError] = useState(false)
   const [themeOverride, setThemeOverride] = useState<"light" | "dark" | null>(null)
   const [systemDark, setSystemDark] = useState(() =>
-    window.matchMedia("(prefers-color-scheme: dark)").matches
+    window.matchMedia("(prefers-color-scheme: dark)").matches,
   )
   const isDark = themeOverride ? themeOverride === "dark" : systemDark
-
-  const runPrint = async () => {
-    if (savingPdf) {
-      return
-    }
-    setPdfError(false)
-    flushSync(() => {
-      setPdfPhase(null)
-      setSavingPdf(true)
-    })
-    await waitForPaint()
-    try {
-      await printCanvas((phase) => setPdfPhase(phase))
-    } catch {
-      setPdfError(true)
-    } finally {
-      setSavingPdf(false)
-      setPdfPhase(null)
-    }
-  }
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-color-scheme: dark)")
@@ -60,19 +29,6 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
     document.documentElement.classList.toggle("dark", isDark)
     document.documentElement.style.colorScheme = isDark ? "dark" : "light"
   }, [isDark])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "p") {
-        return
-      }
-      event.preventDefault()
-      void runPrint()
-    }
-
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [savingPdf])
 
   useEffect(() => {
     const update = () => {
@@ -93,26 +49,6 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!pdfError) {
-      return
-    }
-    const timeout = window.setTimeout(() => setPdfError(false), 4000)
-    return () => window.clearTimeout(timeout)
-  }, [pdfError])
-
-  const snackbarMessage = pdfError
-    ? "Couldn’t export PDF"
-    : savingPdf
-      ? pdfPhase === "engine"
-        ? "Loading PDF engine…"
-        : pdfPhase === "wasm"
-          ? "Rendering PDF…"
-          : pdfPhase === "complete"
-            ? "Saving PDF…"
-            : "Preparing page…"
-      : null
-
   return (
     <div className="canvas-root min-h-screen bg-background text-foreground">
       <header className="canvas-shell-header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -128,17 +64,13 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
             >
               {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
             </Button>
-            <Button disabled={savingPdf} variant="outline" onClick={() => void runPrint()}>
-              <Printer aria-hidden="true" />
-              {savingPdf ? "Saving PDF" : "Save as PDF"}
-            </Button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
 
-      {showBackToTop && !snackbarMessage ? (
+      {showBackToTop ? (
         <Button
           aria-label="Back to top"
           className="canvas-print-hidden fixed right-5 bottom-5 z-50 rounded-full"
@@ -149,19 +81,6 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
           <ArrowUp aria-hidden="true" />
         </Button>
       ) : null}
-
-      {snackbarMessage
-        ? createPortal(
-            <div
-              aria-live="polite"
-              className="canvas-export-snackbar fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-border bg-foreground px-4 py-2 text-sm text-background"
-              role="status"
-            >
-              {snackbarMessage}
-            </div>,
-            document.body,
-          )
-        : null}
     </div>
   )
 }

@@ -57,7 +57,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
 - Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
-- Save as PDF of the whole page as one vector file (selectable text and SVG charts) with a silent download — no print dialog. Interactions are flattened so accordions, tabs, and similar controls read as static sections, scrollable regions expand so nothing is clipped, and a snackbar reports progress. The first export may take a few seconds while the engine loads.
+- Optional Save as PDF of the whole page as one vector file (selectable text and SVG charts), written from the terminal after the page is built. Interactions are flattened so accordions, tabs, and similar controls read as static sections, and scrollable regions expand so nothing is clipped.
 - Optional one-file HTML export with no sibling assets
 
 ## Layout
@@ -72,7 +72,7 @@ Re-running the same command overwrites the installed skill with the latest from 
         ├── SCAFFOLD.md           # First-use runtime setup
         ├── SHADCN-MAPPING.md     # Component selection
         ├── CHARTS.md             # Chart guidance
-        ├── runtime/              # CanvasShell, print CSS, PDF export, Vite config, pinned package.json
+        ├── runtime/              # CanvasShell, print CSS, print layout, Vite config, pinned package.json
         │   ├── dropdown-menu.tsx
         │   ├── canvas-shell.tsx
         │   ├── print-layout.ts
@@ -84,6 +84,7 @@ Re-running the same command overwrites the installed skill with the latest from 
             ├── scaffold.mjs      # Creates the gitignored .canvas/ runtime
             ├── sync-runtime.mjs  # Copies owned shell/print/Vite/build files into .canvas/
             ├── build.mjs         # Copied into .canvas/ to typecheck and bundle a canvas
+            ├── export-pdf.mjs    # Copied into .canvas/ to convert a built page to PDF
             └── reset-runtime.mjs # Deletes that runtime so first-use can run again
 ```
 

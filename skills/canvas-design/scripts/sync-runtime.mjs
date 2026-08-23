@@ -6,11 +6,11 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const SRC_OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
-const CURRENT_SCHEMA = 26
+const CURRENT_SCHEMA = 27
 const PINNED_RUNTIME_DEPS = {
   "react-is": "19.2.8",
-  "@imggion/html2realpdf": "0.2.0",
 }
+const REMOVED_RUNTIME_DEPS = ["@imggion/html2realpdf"]
 const PINNED_TYPESCRIPT = "5.7.3"
 
 function skillRootFromThisFile() {
@@ -82,6 +82,27 @@ function hasDeclaredDep(pkg, name) {
   return Boolean(pkg?.dependencies?.[name] || pkg?.devDependencies?.[name])
 }
 
+function removeRetiredRuntimeDeps(runtimeRoot) {
+  if (!existsSync(join(runtimeRoot, "package.json"))) {
+    return
+  }
+
+  const pkg = readJson(join(runtimeRoot, "package.json")) ?? {}
+  const retired = REMOVED_RUNTIME_DEPS.filter(
+    (name) => hasDeclaredDep(pkg, name) || packageVersion(runtimeRoot, name),
+  )
+  if (!retired.length) {
+    return
+  }
+
+  console.log(`Removing retired Canvas runtime deps: ${retired.join(" ")}`)
+  execFileSync(
+    "npm",
+    ["uninstall", "--legacy-peer-deps", "--no-audit", "--no-fund", ...retired],
+    { cwd: runtimeRoot, stdio: "inherit" },
+  )
+}
+
 function ensureRuntimeDeps(runtimeRoot) {
   if (!existsSync(join(runtimeRoot, "package.json"))) {
     return
@@ -139,9 +160,11 @@ export function syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema = true } 
 
   copyFileSync(join(templates, "vite.config.ts"), join(runtimeRoot, "vite.config.ts"))
   copyFileSync(join(skillRoot, "scripts/build.mjs"), join(runtimeRoot, "scripts/build.mjs"))
+  copyFileSync(join(skillRoot, "scripts/export-pdf.mjs"), join(runtimeRoot, "scripts/export-pdf.mjs"))
 
   ensurePrintCssImport(runtimeRoot)
   ensureDropdownMenu(runtimeRoot, templates)
+  removeRetiredRuntimeDeps(runtimeRoot)
   ensureRuntimeDeps(runtimeRoot)
 
   if (upgradeConfigSchema) {

@@ -33,8 +33,6 @@ const INTERACTIVE_TRIGGER_SLOTS = new Set([
   "tooltip-trigger",
 ])
 
-let printing = false
-
 function createRestorer(): Restorer {
   const fns: Array<() => void> = []
   let restored = false
@@ -549,110 +547,37 @@ function pdfFilename() {
   return `${slug || "canvas"}.pdf`
 }
 
-export type PdfExportPhase = "engine" | "snapshot" | "wasm" | "complete"
-
-type PdfEngine = {
-  render: (
-    source: HTMLElement,
-    options: Record<string, unknown>,
-  ) => Promise<{ download: (filename?: string) => void; dispose: () => void }>
-}
-
-let enginePromise: Promise<PdfEngine> | null = null
-
-async function loadPdfEngine(): Promise<PdfEngine> {
-  if (!enginePromise) {
-    enginePromise = (async () => {
-      const [{ createRenderer }, wasmModule] = await Promise.all([
-        import("@imggion/html2realpdf"),
-        import("html2realpdf-wasm?url"),
-      ])
-      const wasmUrl = wasmModule.default
-      try {
-        return await createRenderer({
-          execution: "worker",
-          wasmUrl,
-        })
-      } catch {
-        return await createRenderer({
-          execution: "main",
-          wasmUrl,
-        })
-      }
-    })()
-  }
-  try {
-    return await enginePromise
-  } catch (error) {
-    enginePromise = null
-    throw error
-  }
-}
-
-function progressPhase(progress: { phase?: string }): PdfExportPhase | null {
-  const { phase } = progress
-  if (phase === "snapshot" || phase === "wasm" || phase === "complete") {
-    return phase
-  }
-  return null
-}
-
-export async function printCanvas(onProgress?: (phase: PdfExportPhase) => void) {
-  if (printing) {
-    return
-  }
-  printing = true
+export async function prepareCanvasForPdf() {
   const restorer = createRestorer()
+  restorer.addClass(document.documentElement, "canvas-print-preparing")
+  await expandDisclosures(restorer)
+  await expandAriaDisclosures(restorer)
+  expandDetails(restorer)
+  await expandTabs(restorer)
 
-  try {
-    restorer.addClass(document.documentElement, "canvas-print-preparing")
-    await expandDisclosures(restorer)
-    await expandAriaDisclosures(restorer)
-    expandDetails(restorer)
-    await expandTabs(restorer)
+  const root = document.querySelector(".canvas-root")
+  if (!(root instanceof HTMLElement)) {
+    throw new Error("Canvas root missing")
+  }
 
-    const root = document.querySelector(".canvas-root")
-    if (!(root instanceof HTMLElement)) {
-      throw new Error("Canvas root missing")
-    }
+  expandOverflow(root, restorer)
+  prepareCapture(restorer, root)
+  await settleLayout()
+}
 
-    expandOverflow(root, restorer)
-    prepareCapture(restorer, root)
-    await settleLayout()
+export function measureCanvasPage() {
+  const root = document.querySelector(".canvas-root")
+  if (!(root instanceof HTMLElement)) {
+    throw new Error("Canvas root missing")
+  }
 
-    const { width, height } = paddedBorderBox(root)
-    const { widthMm, heightMm } = pageSizeMm(width, height)
-
-    onProgress?.("engine")
-    const engine = await loadPdfEngine()
-
-    const reportProgress = (progress: { phase?: string }) => {
-      const phase = progressPhase(progress)
-      if (phase) {
-        onProgress?.(phase)
-      }
-    }
-
-    const pdf = await engine.render(root, {
-      cssProfile: "web",
-      mediaType: "screen",
-      layoutContext: "source",
-      unsupportedCss: "ignore",
-      fallback: "rasterize-subtree",
-      canvasFallback: "rasterize",
-      page: { format: [widthMm, heightMm], unit: "mm", margin: 0 },
-      pageBreak: { avoidAll: true },
-      onProgress: reportProgress,
-    })
-
-    onProgress?.("complete")
-    try {
-      pdf.download(pdfFilename())
-    } finally {
-      pdf.dispose()
-    }
-  } finally {
-    restorer.restore()
-    printing = false
+  const { width, height } = paddedBorderBox(root)
+  const { widthMm, heightMm } = pageSizeMm(width, height)
+  return {
+    widthPx: widthMm / PX_TO_MM,
+    heightPx: heightMm / PX_TO_MM,
+    widthMm,
+    heightMm,
+    filename: pdfFilename(),
   }
 }

@@ -172,12 +172,13 @@ copyFromSkill("runtime/vite.config.ts", "vite.config.ts")
 write("src/canvas-source.css", "")
 syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema: false })
 copyFromSkill("scripts/build.mjs", "scripts/build.mjs")
+copyFromSkill("scripts/export-pdf.mjs", "scripts/export-pdf.mjs")
 
 write(
   "config.json",
   JSON.stringify(
     {
-      schemaVersion: 26,
+      schemaVersion: 27,
       framework: "vite-react-typescript",
       outputMode: modeArg,
       themeMode: themeArg,
