@@ -74,7 +74,7 @@ Use cards for named entities, grouped controls, or independently scannable units
 
 ### Tables and dense data
 
-Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. Tabs print as labeled sections automatically. For filter controls, hide them with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing. Do not author page breaks.
+Use concise headers, right-align numeric values, format units consistently, and keep wide tables horizontally scrollable on screen. The PDF export expands those overflow regions so every column is visible (the page may grow wider). Do not add print-only overflow markup. Add sorting or filtering only when the data volume benefits. Filters and tabs belong on screen. Tabs print as labeled sections automatically. For filter controls, hide them with `canvas-print-hidden` and show every category in a grouped `canvas-print-only` listing. Do not author page breaks.
 
 ### Icons
 
@@ -98,4 +98,4 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Avoid arbitrary hex values when a semantic variable applies.
 - Use chart variables for categorical data.
 - Keep custom CSS in the canvas source only when Tailwind utilities cannot express the requirement.
-- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts. Interactive-chrome hiding and expanding disclosures/tabs are runtime-owned. Do not add `print:text-*` in canvas source.
+- Print-specific shared behavior belongs in the generated `.canvas/src/print.css` and `print-layout.ts`, not individual artifacts. Interactive-chrome hiding, expanding disclosures/tabs, expanding scroll containers, and the exporting snackbar are runtime-owned. Do not add `print:text-*` in canvas source.

@@ -57,7 +57,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
 - Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
-- Save as PDF of the whole page as one file, with interactions flattened so accordions, tabs, and similar controls read as static sections
+- Save as PDF of the whole page as one file, with interactions flattened so accordions, tabs, and similar controls read as static sections, scrollable regions expanded so nothing is clipped, and a snackbar while the file is prepared
 - Optional one-file HTML export with no sibling assets
 
 ## Layout

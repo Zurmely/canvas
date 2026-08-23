@@ -3,6 +3,10 @@ import { jsPDF } from "jspdf"
 
 const PX_TO_MM = 25.4 / 96
 const MAX_PDF_MM = 14400
+const MAX_CANVAS_PX = 16384
+const OVERFLOW_EPSILON = 1
+const SCROLL_OVERFLOW = new Set(["auto", "scroll"])
+const CLIP_OVERFLOW = new Set(["auto", "scroll", "hidden"])
 
 type StyledElement = HTMLElement | SVGElement
 
@@ -113,6 +117,28 @@ function closestSlot(el: Element, name: string) {
 
 function isPrintHidden(el: Element) {
   return Boolean(el.closest(".canvas-print-hidden"))
+}
+
+function isChartInternal(el: Element) {
+  return Boolean(
+    el.closest(".recharts-wrapper, .recharts-surface, .recharts-responsive-container"),
+  )
+}
+
+function shouldWrapCode(el: HTMLElement, scrollsX: boolean) {
+  if (!scrollsX) {
+    return false
+  }
+  if (el.tagName === "PRE" || el.tagName === "CODE") {
+    return true
+  }
+  if (el.closest("pre")) {
+    return true
+  }
+  if (el.querySelector("table")) {
+    return false
+  }
+  return Boolean(el.querySelector("pre, code"))
 }
 
 function nestingDepth(el: HTMLElement, slotName: string) {
@@ -331,20 +357,126 @@ async function expandTabs(restorer: Restorer) {
   }
 }
 
-function prepareCapture(restorer: Restorer) {
+function unclipElement(el: HTMLElement, restorer: Restorer) {
+  restorer.setStyle(el, "overflow", "visible")
+  restorer.setStyle(el, "overflow-x", "visible")
+  restorer.setStyle(el, "overflow-y", "visible")
+  restorer.setStyle(el, "max-width", "none")
+  restorer.setStyle(el, "max-height", "none")
+}
+
+function unclipAncestors(el: HTMLElement, root: HTMLElement, restorer: Restorer, seen: Set<HTMLElement>) {
+  for (let parent = el.parentElement; parent && root.contains(parent); parent = parent.parentElement) {
+    if (seen.has(parent) || isChartInternal(parent) || isPrintHidden(parent)) {
+      continue
+    }
+
+    const style = getComputedStyle(parent)
+    const clips =
+      CLIP_OVERFLOW.has(style.overflowX) ||
+      CLIP_OVERFLOW.has(style.overflowY) ||
+      style.maxWidth !== "none"
+
+    if (!clips && parent !== root) {
+      continue
+    }
+
+    seen.add(parent)
+    unclipElement(parent, restorer)
+    if (parent === root) {
+      break
+    }
+  }
+}
+
+function expandOverflow(root: HTMLElement, restorer: Restorer) {
+  const measured: Array<{
+    el: HTMLElement
+    scrollX: boolean
+    scrollY: boolean
+    wrapCode: boolean
+    scrollWidth: number
+    scrollHeight: number
+  }> = []
+
+  for (const node of root.querySelectorAll("*")) {
+    if (!(node instanceof HTMLElement) || isPrintHidden(node) || isChartInternal(node)) {
+      continue
+    }
+
+    const style = getComputedStyle(node)
+    if (style.display === "none") {
+      continue
+    }
+
+    const scrollX =
+      SCROLL_OVERFLOW.has(style.overflowX) && node.scrollWidth > node.clientWidth + OVERFLOW_EPSILON
+    const scrollY =
+      SCROLL_OVERFLOW.has(style.overflowY) && node.scrollHeight > node.clientHeight + OVERFLOW_EPSILON
+
+    if (!scrollX && !scrollY) {
+      continue
+    }
+
+    measured.push({
+      el: node,
+      scrollX,
+      scrollY,
+      wrapCode: shouldWrapCode(node, scrollX),
+      scrollWidth: node.scrollWidth,
+      scrollHeight: node.scrollHeight,
+    })
+  }
+
+  const unclipped = new Set<HTMLElement>()
+
+  for (const item of measured) {
+    if (item.wrapCode) {
+      restorer.setStyle(item.el, "white-space", "pre-wrap")
+      restorer.setStyle(item.el, "overflow-wrap", "anywhere")
+      restorer.setStyle(item.el, "word-break", "break-word")
+      restorer.setStyle(item.el, "overflow-x", "visible")
+      restorer.setStyle(item.el, "max-width", "100%")
+      continue
+    }
+
+    unclipElement(item.el, restorer)
+    if (item.scrollX) {
+      restorer.setStyle(item.el, "min-width", `${item.scrollWidth}px`)
+      restorer.setStyle(item.el, "width", `${item.scrollWidth}px`)
+    }
+    if (item.scrollY) {
+      restorer.setStyle(item.el, "height", `${item.scrollHeight}px`)
+    }
+    unclipAncestors(item.el, root, restorer, unclipped)
+  }
+}
+
+function prepareCapture(restorer: Restorer, root: HTMLElement) {
   restorer.setStyle(document.documentElement, "height", "auto")
   restorer.setStyle(document.body, "height", "auto")
   restorer.setStyle(document.documentElement, "overflow", "visible")
   restorer.setStyle(document.body, "overflow", "visible")
 
-  const root = document.querySelector(".canvas-root")
-  if (!(root instanceof HTMLElement)) {
-    return
-  }
-
   restorer.setStyle(root, "min-height", "auto")
   restorer.setStyle(root, "height", "auto")
   restorer.setStyle(root, "overflow", "visible")
+
+  const main = root.querySelector("main")
+  if (main instanceof HTMLElement) {
+    restorer.setStyle(main, "overflow", "visible")
+  }
+}
+
+function captureSize(root: HTMLElement) {
+  return {
+    width: Math.max(1, Math.ceil(root.scrollWidth)),
+    height: Math.max(1, Math.ceil(root.scrollHeight)),
+  }
+}
+
+function capturePixelRatio(width: number, height: number) {
+  return Math.max(0.5, Math.min(2, MAX_CANVAS_PX / width, MAX_CANVAS_PX / height))
 }
 
 function pdfFilename() {
@@ -359,9 +491,12 @@ function pdfFilename() {
   return `${slug || "canvas"}.pdf`
 }
 
-async function captureRoot(root: HTMLElement, pixelRatio: number) {
-  const width = Math.max(1, Math.ceil(root.scrollWidth))
-  const height = Math.max(1, Math.ceil(root.scrollHeight))
+async function captureRoot(
+  root: HTMLElement,
+  width: number,
+  height: number,
+  pixelRatio: number,
+) {
   const backgroundColor = getComputedStyle(root).backgroundColor || "#ffffff"
   return toPng(root, {
     width,
@@ -408,23 +543,25 @@ export async function printCanvas() {
     await expandAriaDisclosures(restorer)
     expandDetails(restorer)
     await expandTabs(restorer)
-    prepareCapture(restorer)
-    await settleLayout()
 
     const root = document.querySelector(".canvas-root")
     if (!(root instanceof HTMLElement)) {
-      return
+      throw new Error("Canvas root missing")
     }
 
+    expandOverflow(root, restorer)
+    prepareCapture(restorer, root)
+    await settleLayout()
+
+    const { width, height } = captureSize(root)
+    const pixelRatio = capturePixelRatio(width, height)
     let dataUrl: string
     try {
-      dataUrl = await captureRoot(root, 2)
+      dataUrl = await captureRoot(root, width, height, pixelRatio)
     } catch {
-      dataUrl = await captureRoot(root, 1)
+      dataUrl = await captureRoot(root, width, height, 1)
     }
 
-    const width = Math.max(1, Math.ceil(root.scrollWidth))
-    const height = Math.max(1, Math.ceil(root.scrollHeight))
     downloadPdf(dataUrl, width, height, pdfFilename())
   } finally {
     restorer.restore()

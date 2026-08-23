@@ -12,6 +12,7 @@ type CanvasShellProps = {
 export function CanvasShell({ title, children }: CanvasShellProps) {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [savingPdf, setSavingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState(false)
   const [themeOverride, setThemeOverride] = useState<"light" | "dark" | null>(null)
   const [systemDark, setSystemDark] = useState(() =>
     window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -22,9 +23,12 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
     if (savingPdf) {
       return
     }
+    setPdfError(false)
     setSavingPdf(true)
     try {
       await printCanvas()
+    } catch {
+      setPdfError(true)
     } finally {
       setSavingPdf(false)
     }
@@ -76,6 +80,16 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!pdfError) {
+      return
+    }
+    const timeout = window.setTimeout(() => setPdfError(false), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [pdfError])
+
+  const snackbarMessage = savingPdf ? "Exporting PDF…" : pdfError ? "Couldn’t export PDF" : null
+
   return (
     <div className="canvas-root min-h-screen bg-background text-foreground">
       <header className="canvas-shell-header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -101,7 +115,7 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
 
-      {showBackToTop ? (
+      {showBackToTop && !snackbarMessage ? (
         <Button
           aria-label="Back to top"
           className="canvas-print-hidden fixed right-5 bottom-5 z-50 rounded-full"
@@ -111,6 +125,16 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
         >
           <ArrowUp aria-hidden="true" />
         </Button>
+      ) : null}
+
+      {snackbarMessage ? (
+        <div
+          aria-live="polite"
+          className="canvas-print-hidden fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-border bg-foreground px-4 py-2 text-sm text-background"
+          role="status"
+        >
+          {snackbarMessage}
+        </div>
       ) : null}
     </div>
   )

@@ -22,10 +22,10 @@ The script:
 4. Initializes shadcn with `npx shadcn init --defaults --template vite --base base --yes`.
 5. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
 6. Writes the owned Vite config (external canvas resolver) and copies `scripts/build.mjs`.
-7. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `23`).
+7. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `24`).
 8. Copies `CanvasShell`, print CSS, and the PDF export from the skill's `runtime/` templates.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, and build files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, or `22` with valid mode and look syncs in place to `23`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, and build files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, or `23` with valid mode and look syncs in place to `24`.
 
 ## Reset a broken setup
 
@@ -88,9 +88,9 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 The priority is screen. **Save as PDF** is a share snapshot of the live page, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the export cannot infer. Do not reverse that order.
 
-`CanvasShell` offers a single **Save as PDF** button (Cmd/Ctrl+P runs the same action). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, hides interactive chrome (tab lists, chevrons, tooltips, selects), captures the live canvas at its on-screen width, and downloads one PDF page as tall as the content. There are no slides, no orientation picker, and no authored page breaks.
+`CanvasShell` offers a single **Save as PDF** button (Cmd/Ctrl+P runs the same action). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, hides interactive chrome (tab lists, chevrons, tooltips, selects), shows an exporting snackbar, captures the live canvas, and downloads one PDF page as tall as the content. Horizontally scrolled sections can make that page wider than the screen. There are no slides, no orientation picker, and no authored page breaks.
 
-Do not author `print:text-*` or enlarge on-screen type for the PDF. The snapshot keeps on-screen type.
+Do not author `print:text-*` or enlarge on-screen type for the PDF. The snapshot keeps on-screen type. Do not add print markup for overflow; expanding scroll containers is runtime-owned. Code blocks wrap in the snapshot instead of stretching the page.
 
 Required marks:
 
@@ -103,7 +103,7 @@ Tabs stay on screen. Keep every `TabsContent` mounted so the export can print al
 
 Filter controls that slice data belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Do not leave the PDF showing only the currently selected slice.
 
-Export captures `.canvas-root` at the live layout width (no 1080/1920 reflow). The PDF uses the same light or dark tokens as the on-screen canvas. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the snapshot uses the on-screen plot size.
+Export captures `.canvas-root` after expanding overflow (no 1080/1920 reflow). The PDF uses the same light or dark tokens as the on-screen canvas. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the snapshot uses the on-screen plot size. Do not expand Recharts overflow; plot clipping stays as authored.
 
 ## Add shadcn components
 
@@ -127,7 +127,7 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 23`.
+- `.canvas/config.json` has `schemaVersion: 24`.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.

@@ -111,13 +111,14 @@ Rules:
 
 ## Tall charts and the PDF export
 
-The PDF is one page as tall as the canvas. Charts keep their on-screen height. Do not author page breaks or a fixed print height.
+The PDF is one page as tall as the canvas. Charts keep their on-screen height. Do not author page breaks or a fixed print height. Scrollable regions around a chart (table wrappers, ScrollArea) are expanded by the runtime; Recharts internals are not.
 
 Required:
 
 - Cap `ChartContainer` height on screen as above. Prefer `h-[280px]` for typical plots.
 - Leave the `canvas-print-only` value table as a sibling of the chart.
 - Do not rely on print CSS `max-height` on `.recharts-*` internals. The PDF snapshot keeps the on-screen plot size.
+- Do not write overflow or width overrides against `.recharts-wrapper`, `.recharts-surface`, or `.recharts-responsive-container` for the PDF. The export skips those nodes when expanding scroll containers.
 
 ## Required context
 
@@ -138,7 +139,7 @@ Every chart section needs:
 - Use semantic destructive/success colors only when the data has that meaning.
 - Use value labels only when sparse enough to remain legible.
 - Do not create an empty chart or fabricate filler values.
-- Keep multi-column screen grids. Do not flatten them for the PDF; the export captures the on-screen layout at the chosen width.
+- Keep multi-column screen grids. Do not flatten them for the PDF; the export captures the on-screen layout, expanding only overflow containers that would otherwise clip.
 
 ## PDF values
 

@@ -12,9 +12,9 @@ Create standalone visual artifacts with React, TypeScript, Tailwind CSS, and sha
 
 **The priority is screen.** The canvas is a live page in a browser. Layout, density, interaction, and visual hierarchy are for that screen. Do not design a print document, a paper report, or a sequence of PDF pages and then squeeze it onto a display.
 
-**The print fallback isn't really a print, just a PDF export for easier sharing.** `Save as PDF` downloads the whole canvas as one PDF page at the live layout width, as tall as the content. The runtime mutes interactions: accordions and collapsibles open, tabs become labeled sections, and interactive chrome is hidden. Mark only screen-only controls and print-only data. Do not design slides, paper, or page breaks.
+**The print fallback isn't really a print, just a PDF export for easier sharing.** `Save as PDF` downloads the whole canvas as one PDF page at the live layout width, as tall as the content. Scrollable regions are expanded so clipped tables and lists are fully visible (the page may grow wider or taller). A snackbar reports export progress and failures. The runtime mutes interactions: accordions and collapsibles open, tabs become labeled sections, and interactive chrome is hidden. Mark only screen-only controls and print-only data. Do not design slides, paper, or page breaks.
 
-**PDF chrome is runtime-owned.** The live page uses dashboard type (`text-sm`, `text-xs`) and keeps interactions. At export the shell hides interactive chrome, expands closed content, and downloads one PDF page of the canvas. Do not author giant type, `print:text-*` utilities, or slide-sized headings.
+**PDF chrome is runtime-owned.** The live page uses dashboard type (`text-sm`, `text-xs`) and keeps interactions. At export the shell hides interactive chrome, expands closed content and scrollable regions, shows an exporting snackbar, and downloads one PDF page of the canvas. Do not author giant type, `print:text-*` utilities, or slide-sized headings.
 
 Do not:
 
@@ -27,7 +27,7 @@ Do not:
 
 ## First-use setup
 
-At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `23`.
+At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `24`.
 
 ### Hard gate
 
@@ -55,17 +55,17 @@ Do not ask the user to choose a framework. Use Vite + React + TypeScript: it is 
 
 After the answers, read [SCAFFOLD.md](SCAFFOLD.md), scaffold `.canvas/` with both choices, store them in `.canvas/config.json`, and add `.canvas/` to the workspace `.gitignore`. The ignored folder owns dependencies, shadcn component source, Vite configuration, shared styles, build scripts, and temporary output. Never put a canvas deliverable inside `.canvas/`.
 
-On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, or `23`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
+On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, or `24`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
 
 ```bash
 node .cursor/skills/canvas-design/scripts/sync-runtime.mjs <workspace-root>
 ```
 
-Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, the PDF export, Vite config, and the build script, adds `dropdown-menu` if missing, installs any missing PDF runtime deps, and bumps `schemaVersion` to `23`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
+Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, the PDF export, Vite config, and the build script, adds `dropdown-menu` if missing, installs any missing PDF runtime deps, and bumps `schemaVersion` to `24`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
 
-If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `23`. If schema `18` already has a valid `themeMode`, only run the sync.
+If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `24`. If schema `18` already has a valid `themeMode`, only run the sync.
 
-If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, or `23`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
+If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, or `24`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
 
 If setup is broken or the scaffold schema is incompatible, read the reset section in [SCAFFOLD.md](SCAFFOLD.md). Never delete `.canvas/` without explicit user confirmation.
 
@@ -139,6 +139,7 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 - Tabs belong on screen. The runtime expands every tab panel into a labeled section in the PDF. After installing `tabs`, keep every `TabsContent` mounted (`forceMount` / `keepMounted`, matching the installed component) so inactive panels stay in the DOM. Do not duplicate tab panels as `canvas-print-only` content.
 - Filter controls and other view switchers that are not tabs belong on screen. Mark them `canvas-print-hidden` so they drop out of the PDF. Render a `canvas-print-only` listing of the full unfiltered dataset, grouped under headings that use the same category names as the filter. Never export only the currently selected slice.
 - Do not mark page breaks. Do not use `canvas-print-section`, `canvas-print-flow`, or `canvas-print-keep`. The shell exports the whole canvas as one page.
+- Screen overflow is expected: wrap wide tables in `overflow-x-auto` and cap tall lists as needed. Do not add print markup to unroll them. The runtime expands those regions in the PDF snapshot (the page may grow wider or taller). Code wraps instead of stretching.
 - Size charts for the screen. Cap `ChartContainer` with `max-h-[26rem]` (or an explicit `h-[280px]`–`h-[320px]`) as a screen sanity limit. The PDF keeps that on-screen plot height; do not shrink plots to look like printed figures.
 - Never give cards, charts, tables, or their parents a fixed pixel width or positive `min-width`. Use `w-full`, `min-w-0`, responsive grids, and wrapping text so the screen layout can reflow and the PDF can capture the canvas.
 - Store interactive state in the canvas component. Do not add persistence unless the user requests it.
@@ -151,8 +152,8 @@ Every canvas must use `CanvasShell`, which provides:
 
 - A top header containing the canvas title.
 - A light/dark toggle in the header. Initial mode and live system changes follow `prefers-color-scheme` until the user toggles explicitly.
-- A top-right **Save as PDF** button. That share snapshot expands closed collapsible/accordion sections and `<details>`, expands every tab panel into a labeled section, hides interactive chrome, captures the live canvas at its on-screen width, and downloads one PDF page as tall as the content. Cmd/Ctrl+P runs the same download.
-- PDF export styles that keep the shell header with the page title only. The theme toggle and Save as PDF action are hidden. The current light or dark theme is preserved. Closed disclosure panels are opened. Tab lists, chevrons, tooltips, and other view-switching controls stay hidden; tab panels print as sequential labeled sections. The PDF is one page as tall as the canvas. On-screen type is kept; do not author slide-sized type.
+- A top-right **Save as PDF** button. That share snapshot expands closed collapsible/accordion sections and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped content is fully visible, hides interactive chrome, shows an exporting snackbar, captures the live canvas, and downloads one PDF page as tall (and, if a region was horizontally scrolled, as wide) as the content. Cmd/Ctrl+P runs the same download.
+- PDF export styles that keep the shell header with the page title only. The theme toggle, Save as PDF action, snackbar, and back-to-top control are hidden. The current light or dark theme is preserved. Closed disclosure panels are opened. Tab lists, chevrons, tooltips, and other view-switching controls stay hidden; tab panels print as sequential labeled sections. Scrollable tables and lists are expanded onto the page; code blocks wrap instead of stretching. The PDF is one page as tall as the canvas. On-screen type is kept; do not author slide-sized type.
 - A bottom-right back-to-top floating action button only when:
   - document height exceeds `1.5 ×` the viewport height; and
   - the user has scrolled more than `600px`.
@@ -184,7 +185,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 ## Responsive and accessible behavior
 
 - Start mobile-first and add `sm:`, `md:`, and `lg:` layout changes only when needed.
-- Wrap wide tables in an overflow container.
+- Wrap wide tables in an overflow container on screen. Do not add print-specific overflow markup; the runtime expands those regions in the PDF snapshot.
 - Every interactive control needs a visible label or accessible name.
 - Do not communicate status by color alone; include text.
 - Preserve keyboard focus indicators.
@@ -201,14 +202,14 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - No empty component or placeholder is rendered.
 - The composition is not a uniform stack of cards.
 - Components are imported from `.canvas` shadcn source, not reimplemented.
-- The title, system-aware theme toggle, Save as PDF control, and conditional back-to-top control come from `CanvasShell`.
+- The title, system-aware theme toggle, Save as PDF control, exporting snackbar, and conditional back-to-top control come from `CanvasShell`.
 - Charts and tables are self-describing.
 - Every chart's exact values are visible in the PDF snapshot.
 - Filter UI stays on screen and is hidden in the PDF snapshot; the snapshot shows every category with labeled separations, not only the active filter.
 - Tabs stay on screen; the PDF shows every panel as a labeled section, not only the active tab.
 - No `canvas-print-section`, `canvas-print-flow`, `canvas-print-keep`, or other page-break classes. Only `canvas-print-hidden` / `canvas-print-only` are used.
 - No `print:text-*` or slide-sized type in the canvas source. On-screen type stays compact and is what the PDF uses.
-- The PDF is the whole canvas on one page at the live layout width. No leftover tab lists, chevrons, or tooltips. Accordions are open; tabs read as labeled sections.
+- The PDF is the whole canvas on one page. Scrollable tables and lists are fully visible (the page may be wider or taller than the screen). No leftover tab lists, chevrons, or tooltips. Accordions are open; tabs read as labeled sections.
 - The PDF header shows the page title and no header actions.
 - No card, chart, table, SVG, or text block overflows or is clipped at the page edge. First and last line/area points stay fully visible.
 - The source typechecks and builds.

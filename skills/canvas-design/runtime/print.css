@@ -75,6 +75,28 @@ html.canvas-print-preparing .canvas-print-tab-heading:first-child {
   margin-top: 0;
 }
 
+html.canvas-print-preparing .canvas-root > main {
+  overflow: visible !important;
+}
+
+html.canvas-print-preparing [data-slot="scroll-area-scrollbar"] {
+  display: none !important;
+}
+
+html.canvas-print-preparing [data-slot="scroll-area-viewport"] {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+html.canvas-print-preparing pre,
+html.canvas-print-preparing code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap !important;
+  word-break: break-word;
+}
+
 @media print {
   html {
     print-color-adjust: exact;
@@ -129,7 +151,8 @@ html.canvas-print-preparing .canvas-print-tab-heading:first-child {
   [data-slot="sheet-content"],
   [data-slot="chart"] .recharts-tooltip-wrapper,
   [data-slot="collapsible-trigger"] svg,
-  [data-slot="accordion-trigger"] svg {
+  [data-slot="accordion-trigger"] svg,
+  [data-slot="scroll-area-scrollbar"] {
     display: none !important;
   }
 
@@ -227,6 +250,12 @@ html.canvas-print-preparing .canvas-print-tab-heading:first-child {
     display: block !important;
   }
 
+  [data-slot="scroll-area-viewport"] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
   .canvas-print-tab-heading {
     margin: 1.25rem 0 0.75rem;
     font-size: 1.125rem;
@@ -239,17 +268,13 @@ html.canvas-print-preparing .canvas-print-tab-heading:first-child {
   }
 
   table {
-    width: 100% !important;
-    max-width: 100% !important;
-    table-layout: fixed;
+    max-width: none;
   }
 
-  th,
-  td,
   pre,
   code {
     max-width: 100%;
-    white-space: normal !important;
+    white-space: pre-wrap !important;
     overflow-wrap: anywhere;
     word-break: break-word;
   }
