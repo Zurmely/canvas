@@ -3,7 +3,7 @@ import { createPortal, flushSync } from "react-dom"
 import { ArrowUp, Moon, Printer, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { printCanvas } from "@/print-layout"
+import { printCanvas, type PdfExportPhase } from "@/print-layout"
 
 type CanvasShellProps = {
   title: string
@@ -19,6 +19,7 @@ async function waitForPaint() {
 export function CanvasShell({ title, children }: CanvasShellProps) {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [savingPdf, setSavingPdf] = useState(false)
+  const [pdfPhase, setPdfPhase] = useState<PdfExportPhase | null>(null)
   const [pdfError, setPdfError] = useState(false)
   const [themeOverride, setThemeOverride] = useState<"light" | "dark" | null>(null)
   const [systemDark, setSystemDark] = useState(() =>
@@ -32,15 +33,17 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
     }
     setPdfError(false)
     flushSync(() => {
+      setPdfPhase(null)
       setSavingPdf(true)
     })
     await waitForPaint()
     try {
-      await printCanvas()
+      await printCanvas((phase) => setPdfPhase(phase))
     } catch {
       setPdfError(true)
     } finally {
       setSavingPdf(false)
+      setPdfPhase(null)
     }
   }
 
@@ -98,7 +101,17 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
     return () => window.clearTimeout(timeout)
   }, [pdfError])
 
-  const snackbarMessage = savingPdf ? "Exporting PDF…" : pdfError ? "Couldn’t export PDF" : null
+  const snackbarMessage = pdfError
+    ? "Couldn’t export PDF"
+    : savingPdf
+      ? pdfPhase === "engine"
+        ? "Loading PDF engine…"
+        : pdfPhase === "wasm"
+          ? "Rendering PDF…"
+          : pdfPhase === "complete"
+            ? "Saving PDF…"
+            : "Preparing page…"
+      : null
 
   return (
     <div className="canvas-root min-h-screen bg-background text-foreground">

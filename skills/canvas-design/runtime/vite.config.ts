@@ -44,6 +44,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(runtimeRoot, "./src"),
+      "html2realpdf-wasm": path.resolve(
+        runtimeRoot,
+        "node_modules/@imggion/html2realpdf/dist/libhtml2realpdf.wasm",
+      ),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -54,7 +58,12 @@ export default defineConfig({
       "react/jsx-runtime",
       "react-is",
     ],
+    exclude: ["@imggion/html2realpdf"],
   },
+  worker: {
+    format: "es",
+  },
+  assetsInclude: ["**/*.wasm"],
   server: {
     fs: {
       allow: [workspaceRoot],

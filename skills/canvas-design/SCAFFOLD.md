@@ -22,10 +22,10 @@ The script:
 4. Initializes shadcn with `npx shadcn init --defaults --template vite --base base --yes`.
 5. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
 6. Writes the owned Vite config (external canvas resolver) and copies `scripts/build.mjs`.
-7. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `25`).
+7. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `26`).
 8. Copies `CanvasShell`, print CSS, and the PDF export from the skill's `runtime/` templates.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, and build files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, `23`, or `24` with valid mode and look syncs in place to `25`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, and build files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, `23`, `24`, or `25` with valid mode and look syncs in place to `26`.
 
 ## Reset a broken setup
 
@@ -88,7 +88,7 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 The priority is screen. **Save as PDF** is a share snapshot of the live page, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the export cannot infer. Do not reverse that order.
 
-`CanvasShell` offers a single **Save as PDF** button (Cmd/Ctrl+P runs the same action). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, hides interactive chrome (tab lists, chevrons, tooltips, selects), shows an exporting snackbar, restores the live page, then opens the system print dialog. Choose **Save as PDF**. The page is one custom size as tall as the content (and wider if a region was expanded horizontally). Text is selectable; charts stay vector. Container padding is kept. There are no slides, no orientation picker, and no authored page breaks.
+`CanvasShell` offers a single **Save as PDF** button (Cmd/Ctrl+P runs the same action). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, hides interactive chrome (tab lists, chevrons, tooltips, selects), shows an exporting snackbar, then downloads one custom-sized vector page immediately — no print dialog. The first export may take a few seconds while the engine loads. Overflow still expands; padding is kept. Text is selectable; charts stay vector. Layout may differ slightly from Chrome; unsupported chart bits may rasterize as a subtree. `@media print` remains for File → Print only. There are no slides, no orientation picker, and no authored page breaks.
 
 Do not author `print:text-*` or enlarge on-screen type for the PDF. The export keeps on-screen type. Do not add print markup for overflow; expanding scroll containers is runtime-owned. Code blocks wrap instead of stretching the page.
 
@@ -127,7 +127,7 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 25`.
+- `.canvas/config.json` has `schemaVersion: 26`.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.

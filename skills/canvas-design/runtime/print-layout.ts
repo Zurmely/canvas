@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 const PX_TO_MM = 25.4 / 96
 const MAX_PAGE_MM = 14400
 const OVERFLOW_EPSILON = 1
@@ -526,7 +528,7 @@ function paddedBorderBox(el: HTMLElement) {
 
 function pageSizeMm(widthPx: number, heightPx: number) {
   let widthMm = widthPx * PX_TO_MM
-  let heightMm = heightPx * PX_TO_MM
+  let heightMm = heightPx * PX_TO_MM + 2
   if (widthMm > MAX_PAGE_MM || heightMm > MAX_PAGE_MM) {
     const scale = Math.min(MAX_PAGE_MM / widthMm, MAX_PAGE_MM / heightMm)
     widthMm *= scale
@@ -535,172 +537,72 @@ function pageSizeMm(widthPx: number, heightPx: number) {
   return { widthMm, heightMm }
 }
 
-function copyStyles(fromDoc: Document, toDoc: Document) {
-  fromDoc.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
-    toDoc.head.appendChild(node.cloneNode(true))
-  })
+function pdfFilename() {
+  const heading = document.querySelector(".canvas-root h1")
+  const raw = (heading?.textContent || document.title || "canvas").trim()
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^\w\s-]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+  return `${slug || "canvas"}.pdf`
+}
 
-  const toWin = toDoc.defaultView
-  if (toWin && fromDoc.adoptedStyleSheets?.length) {
-    const clones: CSSStyleSheet[] = []
-    for (const sheet of fromDoc.adoptedStyleSheets) {
+export type PdfExportPhase = "engine" | "snapshot" | "wasm" | "complete"
+
+type PdfEngine = {
+  render: (
+    source: HTMLElement,
+    options: Record<string, unknown>,
+  ) => Promise<{ download: (filename?: string) => void; dispose: () => void }>
+}
+
+let enginePromise: Promise<PdfEngine> | null = null
+
+async function loadPdfEngine(): Promise<PdfEngine> {
+  if (!enginePromise) {
+    enginePromise = (async () => {
+      const [{ createRenderer }, wasmModule] = await Promise.all([
+        import("@imggion/html2realpdf"),
+        import("html2realpdf-wasm?url"),
+      ])
+      const wasmUrl = wasmModule.default
       try {
-        const clone = new toWin.CSSStyleSheet()
-        for (const rule of sheet.cssRules) {
-          clone.insertRule(rule.cssText, clone.cssRules.length)
-        }
-        clones.push(clone)
+        return await createRenderer({
+          execution: "worker",
+          wasmUrl,
+        })
       } catch {
-        // Cross-origin or constructable-sheet clone failed; linked/style tags still apply.
+        return await createRenderer({
+          execution: "main",
+          wasmUrl,
+        })
       }
-    }
-    if (clones.length) {
-      toDoc.adoptedStyleSheets = clones
-    }
+    })()
   }
-
-  const sourceHtml = fromDoc.documentElement
-  const targetHtml = toDoc.documentElement
-  targetHtml.className = sourceHtml.className
-  targetHtml.classList.add("canvas-print-preparing")
-  const htmlStyle = sourceHtml.getAttribute("style")
-  if (htmlStyle) {
-    targetHtml.setAttribute("style", htmlStyle)
+  try {
+    return await enginePromise
+  } catch (error) {
+    enginePromise = null
+    throw error
   }
-  targetHtml.style.colorScheme = sourceHtml.style.colorScheme || getComputedStyle(sourceHtml).colorScheme
-
-  toDoc.body.className = fromDoc.body.className
-  toDoc.body.style.backgroundColor = getComputedStyle(fromDoc.body).backgroundColor
-  toDoc.body.style.color = getComputedStyle(fromDoc.body).color
-  toDoc.body.style.margin = "0"
 }
 
-function injectPageStyle(doc: Document, widthPx: number, heightPx: number, widthMm: number, heightMm: number) {
-  const style = doc.createElement("style")
-  style.setAttribute("data-canvas-print-page", "")
-  style.textContent = `
-    @page { size: ${widthMm}mm ${heightMm}mm; margin: 0; }
-    html, body {
-      width: ${widthPx}px;
-      min-width: ${widthPx}px;
-      height: ${heightPx}px;
-      min-height: ${heightPx}px;
-      margin: 0;
-      padding: 0;
-      overflow: visible;
-      background: var(--background);
-    }
-    .canvas-root {
-      width: ${widthPx}px;
-      min-width: ${widthPx}px;
-      min-height: ${heightPx}px;
-    }
-    .canvas-export-snackbar {
-      display: none !important;
-    }
-  `
-  doc.head.appendChild(style)
-}
-
-async function createPrintIframe(root: HTMLElement, widthPx: number, heightPx: number) {
-  const { widthMm, heightMm } = pageSizeMm(widthPx, heightPx)
-  const iframe = document.createElement("iframe")
-  iframe.setAttribute("aria-hidden", "true")
-  iframe.setAttribute("title", "Canvas PDF export")
-  iframe.style.cssText = [
-    "position: fixed",
-    "top: 0",
-    "left: 0",
-    `width: ${widthPx}px`,
-    `height: ${heightPx}px`,
-    "border: 0",
-    "opacity: 0",
-    "pointer-events: none",
-    "z-index: -1",
-  ].join(";")
-  document.body.appendChild(iframe)
-
-  const doc = iframe.contentDocument
-  const win = iframe.contentWindow
-  if (!doc || !win) {
-    iframe.remove()
-    throw new Error("Print frame missing")
+function progressPhase(progress: { phase?: string }): PdfExportPhase | null {
+  const { phase } = progress
+  if (phase === "snapshot" || phase === "wasm" || phase === "complete") {
+    return phase
   }
-
-  doc.open()
-  doc.write("<!DOCTYPE html><html><head></head><body></body></html>")
-  doc.close()
-
-  copyStyles(document, doc)
-  injectPageStyle(doc, widthPx, heightPx, widthMm, heightMm)
-  doc.body.appendChild(root.cloneNode(true))
-
-  await Promise.all(
-    Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).map(
-      (node) =>
-        new Promise<void>((resolve) => {
-          const link = node as HTMLLinkElement
-          if (link.sheet) {
-            resolve()
-            return
-          }
-          link.addEventListener("load", () => resolve(), { once: true })
-          link.addEventListener("error", () => resolve(), { once: true })
-        }),
-    ),
-  )
-
-  if (doc.fonts?.ready) {
-    await doc.fonts.ready
-  }
-  await settleLayout(win)
-  return iframe
+  return null
 }
 
-function waitForPrintDialog(win: Window): Promise<void> {
-  return new Promise((resolve) => {
-    let settled = false
-    const media = win.matchMedia("print")
-
-    const finish = () => {
-      if (settled) {
-        return
-      }
-      settled = true
-      win.removeEventListener("afterprint", finish)
-      window.removeEventListener("focus", onParentFocus)
-      media.removeEventListener("change", onMedia)
-      window.clearTimeout(timeout)
-      resolve()
-    }
-
-    const onParentFocus = () => {
-      window.setTimeout(finish, 250)
-    }
-
-    const onMedia = (event: MediaQueryListEvent) => {
-      if (!event.matches) {
-        finish()
-      }
-    }
-
-    win.addEventListener("afterprint", finish)
-    media.addEventListener("change", onMedia)
-    window.addEventListener("focus", onParentFocus)
-    const timeout = window.setTimeout(finish, 5 * 60 * 1000)
-
-    win.focus()
-    win.print()
-  })
-}
-
-export async function printCanvas() {
+export async function printCanvas(onProgress?: (phase: PdfExportPhase) => void) {
   if (printing) {
     return
   }
   printing = true
   const restorer = createRestorer()
-  let iframe: HTMLIFrameElement | null = null
 
   try {
     restorer.addClass(document.documentElement, "canvas-print-preparing")
@@ -719,18 +621,38 @@ export async function printCanvas() {
     await settleLayout()
 
     const { width, height } = paddedBorderBox(root)
-    iframe = await createPrintIframe(root, width, height)
-    restorer.restore()
-    await waitForPaint()
+    const { widthMm, heightMm } = pageSizeMm(width, height)
 
-    const frameWindow = iframe.contentWindow
-    if (!frameWindow) {
-      throw new Error("Print frame missing")
+    onProgress?.("engine")
+    const engine = await loadPdfEngine()
+
+    const reportProgress = (progress: { phase?: string }) => {
+      const phase = progressPhase(progress)
+      if (phase) {
+        onProgress?.(phase)
+      }
     }
-    await waitForPrintDialog(frameWindow)
+
+    const pdf = await engine.render(root, {
+      cssProfile: "web",
+      mediaType: "screen",
+      layoutContext: "source",
+      unsupportedCss: "ignore",
+      fallback: "rasterize-subtree",
+      canvasFallback: "rasterize",
+      page: { format: [widthMm, heightMm], unit: "mm", margin: 0 },
+      pageBreak: { avoidAll: true },
+      onProgress: reportProgress,
+    })
+
+    onProgress?.("complete")
+    try {
+      pdf.download(pdfFilename())
+    } finally {
+      pdf.dispose()
+    }
   } finally {
     restorer.restore()
-    iframe?.remove()
     printing = false
   }
 }

@@ -6,9 +6,10 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const SRC_OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
-const CURRENT_SCHEMA = 25
+const CURRENT_SCHEMA = 26
 const PINNED_RUNTIME_DEPS = {
   "react-is": "19.2.8",
+  "@imggion/html2realpdf": "0.2.0",
 }
 const PINNED_TYPESCRIPT = "5.7.3"
 
