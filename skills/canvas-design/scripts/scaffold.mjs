@@ -12,7 +12,7 @@ import {
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { syncCanvasRuntime } from "./sync-runtime.mjs"
+import { CURRENT_SCHEMA, ensurePdfDeps, syncCanvasRuntime } from "./sync-runtime.mjs"
 
 const [rootArg, modeArg, themeArg] = process.argv.slice(2)
 
@@ -45,9 +45,13 @@ function copyFromSkill(relativeFromSkill, relativeToRuntime = relativeFromSkill)
   copyFileSync(join(skillRoot, relativeFromSkill), join(runtimeRoot, relativeToRuntime))
 }
 
-function run(command, args, cwd = workspaceRoot) {
+function run(command, args, cwd = workspaceRoot, extraEnv = {}) {
   console.log(`Running ${command} ${args.join(" ")}`)
-  execFileSync(command, args, { cwd, stdio: "inherit" })
+  execFileSync(command, args, {
+    cwd,
+    stdio: "inherit",
+    env: { ...process.env, ...extraEnv },
+  })
 }
 
 mkdirSync(runtimeRoot, { recursive: true })
@@ -159,7 +163,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 const installArgs = existsSync(join(runtimeRoot, "package-lock.json"))
   ? ["ci", "--legacy-peer-deps", "--no-audit", "--no-fund"]
   : ["install", "--legacy-peer-deps", "--no-audit", "--no-fund"]
-run("npm", installArgs, runtimeRoot)
+run("npm", installArgs, runtimeRoot, { PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1" })
+ensurePdfDeps(runtimeRoot)
 
 run(
   "npx",
@@ -178,7 +183,7 @@ write(
   "config.json",
   JSON.stringify(
     {
-      schemaVersion: 27,
+      schemaVersion: CURRENT_SCHEMA,
       framework: "vite-react-typescript",
       outputMode: modeArg,
       themeMode: themeArg,

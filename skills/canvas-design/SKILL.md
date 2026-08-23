@@ -12,7 +12,7 @@ Create standalone visual artifacts with React, TypeScript, Tailwind CSS, and sha
 
 **The priority is screen.** The canvas is a live page in a browser. Layout, density, interaction, and visual hierarchy are for that screen. Do not design a print document, a paper report, or a sequence of PDF pages and then squeeze it onto a display.
 
-**The print fallback isn't really a print layout, just a share PDF.** When the user chooses Save as PDF after creation, a CLI export prepares the built page (one page at the live layout width, as tall as the content) and writes a vector PDF. Text stays selectable and Recharts stay SVG. Scrollable regions are expanded so clipped tables and lists are fully visible (the page may grow wider or taller). Overflow still expands and padding is kept. The runtime mutes interactions: accordions and collapsibles open, tabs become labeled sections, and interactive chrome is hidden. The live page does not include a Save as PDF control. Mark only screen-only controls and print-only data. Do not design slides, paper, or page breaks.
+**The print fallback isn't really a print layout, just a share PDF.** When the user chooses Save as PDF or Present page and PDF after creation, a CLI export prepares the built page (one page at the live layout width, as tall as the content) and writes a vector PDF. Text stays selectable and Recharts stay SVG. Scrollable regions are expanded so clipped tables and lists are fully visible (the page may grow wider or taller). Overflow still expands and padding is kept. The runtime mutes interactions: accordions and collapsibles open, tabs become labeled sections, and interactive chrome is hidden. The live page does not include a Save as PDF control. Mark only screen-only controls and print-only data. Do not design slides, paper, or page breaks.
 
 **PDF flattening is runtime-owned.** The live page uses dashboard type (`text-sm`, `text-xs`) and keeps interactions. The CLI export hides interactive chrome, expands closed content and scrollable regions, then writes one custom-sized vector page. Do not author giant type, `print:text-*` utilities, or slide-sized headings.
 
@@ -27,7 +27,7 @@ Do not:
 
 ## First-use setup
 
-At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `27`.
+At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `28`.
 
 ### Hard gate
 
@@ -55,17 +55,17 @@ Do not ask the user to choose a framework. Use Vite + React + TypeScript: it is 
 
 After the answers, read [SCAFFOLD.md](SCAFFOLD.md), scaffold `.canvas/` with both choices, store them in `.canvas/config.json`, and add `.canvas/` to the workspace `.gitignore`. The ignored folder owns dependencies, shadcn component source, Vite configuration, shared styles, build scripts, and temporary output. Never put a canvas deliverable inside `.canvas/`.
 
-On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, or `27`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
+On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, or `28`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
 
 ```bash
 node .cursor/skills/canvas-design/scripts/sync-runtime.mjs <workspace-root>
 ```
 
-Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, print layout, Vite config, the build script, and the PDF export script, adds `dropdown-menu` if missing, installs any missing runtime deps, removes the retired in-browser PDF engine if present, and bumps `schemaVersion` to `27`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
+Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, print layout, Vite config, the build script, and the PDF export script, adds `dropdown-menu` if missing, installs any missing runtime deps including Playwright, installs Chromium if missing, removes the retired in-browser PDF engine if present, and bumps `schemaVersion` to `28`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
 
-If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `27`. If schema `18` already has a valid `themeMode`, only run the sync.
+If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `28`. If schema `18` already has a valid `themeMode`, only run the sync.
 
-If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, or `27`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
+If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, or `28`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`.
 
 If setup is broken or the scaffold schema is incompatible, read the reset section in [SCAFFOLD.md](SCAFFOLD.md). Never delete `.canvas/` without explicit user confirmation.
 
@@ -214,7 +214,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - No card, chart, table, SVG, or text block overflows or is clipped at the page edge. First and last line/area points stay fully visible.
 - The source typechecks and builds.
 - HTML mode produces one self-contained `.html` file.
-- The final response links only the page that matches how the user asked to receive it.
+- The final response links only the deliverable that matches how the user asked to receive it (page, PDF, or both).
 
 ## User-facing language
 
@@ -235,11 +235,12 @@ Progress updates stay short and about the page or its content. Check setup and c
 
 After the artifact builds successfully and before the final response, call `AskQuestion`. Do not infer whether the user wants it opened.
 
-Ask the same three options in both modes:
+Ask the same four options in both modes:
 
 - **Open page in browser (recommended)** — open the page in the system browser.
 - **Present it only** — do not open anything; then show the page link.
 - **Save as PDF** — do not open the page; write a PDF of the built page, then open that PDF.
+- **Present page and PDF** — do not open anything; write a PDF of the built page, then show both the page and PDF links.
 
 Wait for the answer and do exactly what the user selects:
 
@@ -252,13 +253,14 @@ Wait for the answer and do exactly what the user selects:
 node .canvas/scripts/export-pdf.mjs <input.html> <output.pdf>
 ```
 
-  Write `<name>.pdf` beside the canvas source. Then open the PDF with the platform's normal file opener. The first PDF export may install a local browser engine under `.canvas/`; do not narrate that. If export fails, keep the page artifact and say the PDF could not be created.
+  Write `<name>.pdf` beside the canvas source. Then open the PDF with the platform's normal file opener. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. If export fails, keep the page artifact and say the PDF could not be created.
+- **Present page and PDF**: do not open the page, do not open the PDF, and do not start a preview server. Convert the already-built self-contained HTML with the same command and output path as **Save as PDF**. Then show both the page and PDF links. If export fails, keep the page artifact, present the page, and say the PDF could not be created.
 
 If opening the page fails, keep the successfully created artifact and say the page could not be opened. If port `4173` is occupied by an unrelated process, choose an available local port, start the server there, and use that URL in the link.
 
 ## Required completion format
 
-Present only the view that matches how the user asked to receive it. Do not also link the other file, and do not add a details, format, or validation section.
+Present only the view that matches how the user asked to receive it. Do not also link the other file unless they chose **Present page and PDF**. Do not add a details, format, or validation section.
 
 If they asked to open it:
 
@@ -287,12 +289,25 @@ Saved as PDF: [Page title](absolute-pdf-path)
 - One-page share PDF of the full page
 ```
 
+If they asked to present the page and PDF:
+
+```markdown
+[Open page](absolute-path-or-url)
+
+Saved as PDF: [Page title](absolute-pdf-path)
+
+- [Two or three concise bullets naming the actual sections or interactions]
+- Light and dark mode, and back to top on long pages
+- One-page share PDF of the full page
+```
+
 Link target:
 
 - HTML mode, open or present → the generated page file.
 - React mode after opening → the preview URL that was opened.
 - React mode, present only → the validated preview under `.canvas/preview/`.
 - Save as PDF → the written `.pdf` beside the canvas source. Do not also link the page.
+- Present page and PDF → the page (same target as present only) and the written `.pdf`.
 
 Use an absolute markdown link. Name the page in plain language. Describe what was actually created rather than only saying the task is complete.
 

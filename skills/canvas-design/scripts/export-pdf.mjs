@@ -52,6 +52,10 @@ function ensurePlaywright() {
 }
 
 function installChromium() {
+  if (process.env.CANVAS_SKIP_PDF_BROWSER === "1") {
+    throw new Error("Playwright Chromium is missing and CANVAS_SKIP_PDF_BROWSER=1")
+  }
+
   execFileSync("npx", ["playwright", "install", "chromium"], {
     cwd: runtimeRoot,
     stdio: "inherit",
@@ -103,7 +107,12 @@ async function exportPdf() {
     throw new Error("Playwright failed to install in the Canvas runtime")
   }
 
-  const { chromium } = await import(pathToFileURL(playwrightPath).href)
+  const playwrightModule = await import(pathToFileURL(playwrightPath).href)
+  const chromium = playwrightModule.chromium ?? playwrightModule.default?.chromium
+  if (!chromium) {
+    throw new Error("Playwright chromium launcher is unavailable")
+  }
+
   const bundlePath = await bundlePrintLayout()
   const browser = await launchChromium(chromium)
 
@@ -122,20 +131,16 @@ async function exportPdf() {
     await page.evaluate(() => document.fonts.ready)
 
     const metrics = await page.evaluate(() => globalThis.CanvasPrintLayout.measureCanvasPage())
-    await page.evaluate(({ widthPx, heightPx }) => {
-      const style = document.createElement("style")
-      style.setAttribute("data-canvas-page-size", "")
-      style.textContent = `@page { size: ${widthPx}px ${heightPx}px; margin: 0; }`
-      document.head.appendChild(style)
-    }, metrics)
 
     mkdirSync(dirname(outputPdf), { recursive: true })
     await page.pdf({
       displayHeaderFooter: false,
-      margin: { bottom: 0, left: 0, right: 0, top: 0 },
-      path: outputPdf,
-      preferCSSPageSize: true,
+      width: `${metrics.widthPx}px`,
+      height: `${metrics.heightPx}px`,
+      preferCSSPageSize: false,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
       printBackground: true,
+      path: outputPdf,
     })
   } finally {
     await browser.close()

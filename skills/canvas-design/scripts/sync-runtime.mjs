@@ -2,16 +2,18 @@
 
 import { execFileSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const SRC_OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
-const CURRENT_SCHEMA = 27
+export const CURRENT_SCHEMA = 28
 const PINNED_RUNTIME_DEPS = {
   "react-is": "19.2.8",
 }
 const REMOVED_RUNTIME_DEPS = ["@imggion/html2realpdf"]
 const PINNED_TYPESCRIPT = "5.7.3"
+export const PINNED_PLAYWRIGHT = "1.55.0"
 
 function skillRootFromThisFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -141,6 +143,63 @@ function ensureRuntimeDeps(runtimeRoot) {
   }
 }
 
+function skipPdfBrowser() {
+  return process.env.CANVAS_SKIP_PDF_BROWSER === "1"
+}
+
+function isChromiumInstalled(runtimeRoot) {
+  try {
+    const require = createRequire(join(runtimeRoot, "package.json"))
+    const playwright = require("playwright")
+    const chromium = playwright.chromium ?? playwright.default?.chromium
+    const executablePath =
+      typeof chromium?.executablePath === "function" ? chromium.executablePath() : null
+    return Boolean(executablePath && existsSync(executablePath))
+  } catch {
+    return false
+  }
+}
+
+export function ensurePdfDeps(runtimeRoot) {
+  if (!existsSync(join(runtimeRoot, "package.json"))) {
+    return
+  }
+
+  const pkg = readJson(join(runtimeRoot, "package.json")) ?? {}
+  const installedVersion = packageVersion(runtimeRoot, "playwright")
+  if (!hasDeclaredDep(pkg, "playwright") || !installedVersion) {
+    console.log(`Installing playwright@${PINNED_PLAYWRIGHT} for Canvas PDF export`)
+    execFileSync(
+      "npm",
+      [
+        "install",
+        "--legacy-peer-deps",
+        "--no-audit",
+        "--no-fund",
+        "--save-dev",
+        `playwright@${PINNED_PLAYWRIGHT}`,
+      ],
+      {
+        cwd: runtimeRoot,
+        stdio: "inherit",
+        env: { ...process.env, PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1" },
+      },
+    )
+  }
+
+  if (skipPdfBrowser()) {
+    return
+  }
+
+  if (!isChromiumInstalled(runtimeRoot)) {
+    console.log("Installing Playwright Chromium for Canvas PDF export")
+    execFileSync("npx", ["playwright", "install", "chromium"], {
+      cwd: runtimeRoot,
+      stdio: "inherit",
+    })
+  }
+}
+
 export function syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema = true } = {}) {
   const runtimeRoot = join(resolve(workspaceRoot), ".canvas")
   const skillRoot = skillRootFromThisFile()
@@ -166,6 +225,7 @@ export function syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema = true } 
   ensureDropdownMenu(runtimeRoot, templates)
   removeRetiredRuntimeDeps(runtimeRoot)
   ensureRuntimeDeps(runtimeRoot)
+  ensurePdfDeps(runtimeRoot)
 
   if (upgradeConfigSchema) {
     upgradeConfig(runtimeRoot)

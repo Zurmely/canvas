@@ -57,7 +57,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
 - Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
-- Optional Save as PDF of the whole page as one vector file (selectable text and SVG charts), written from the terminal after the page is built. Interactions are flattened so accordions, tabs, and similar controls read as static sections, and scrollable regions expand so nothing is clipped.
+- Optional Save as PDF of the whole page as one vector file (selectable text and SVG charts), written from the terminal after the page is built. After creation you can open the page, present it, save a PDF, or receive both the page and a PDF. Interactions are flattened so accordions, tabs, and similar controls read as static sections, and scrollable regions expand so nothing is clipped.
 - Optional one-file HTML export with no sibling assets
 
 ## Layout
