@@ -1,14 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
-import { ArrowUp, ChevronDown, Moon, Printer, Sun } from "lucide-react"
+import { useEffect, useState, type ReactNode } from "react"
+import { ArrowUp, Moon, Printer, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { printCanvas, type PrintOrientation } from "@/print-layout"
+import { printCanvas } from "@/print-layout"
 
 type CanvasShellProps = {
   title: string
@@ -17,16 +11,23 @@ type CanvasShellProps = {
 
 export function CanvasShell({ title, children }: CanvasShellProps) {
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const [savingPdf, setSavingPdf] = useState(false)
   const [themeOverride, setThemeOverride] = useState<"light" | "dark" | null>(null)
   const [systemDark, setSystemDark] = useState(() =>
     window.matchMedia("(prefers-color-scheme: dark)").matches
   )
-  const lastOrientation = useRef<PrintOrientation>("landscape")
   const isDark = themeOverride ? themeOverride === "dark" : systemDark
 
-  const runPrint = (orientation: PrintOrientation) => {
-    lastOrientation.current = orientation
-    void printCanvas(orientation)
+  const runPrint = async () => {
+    if (savingPdf) {
+      return
+    }
+    setSavingPdf(true)
+    try {
+      await printCanvas()
+    } finally {
+      setSavingPdf(false)
+    }
   }
 
   useEffect(() => {
@@ -49,12 +50,12 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
         return
       }
       event.preventDefault()
-      void printCanvas(lastOrientation.current)
+      void runPrint()
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  }, [savingPdf])
 
   useEffect(() => {
     const update = () => {
@@ -90,25 +91,10 @@ export function CanvasShell({ title, children }: CanvasShellProps) {
             >
               {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button variant="outline">
-                    <Printer aria-hidden="true" />
-                    Save as PDF
-                    <ChevronDown aria-hidden="true" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => runPrint("portrait")}>
-                  Portrait
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => runPrint("landscape")}>
-                  Landscape
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button disabled={savingPdf} variant="outline" onClick={() => void runPrint()}>
+              <Printer aria-hidden="true" />
+              {savingPdf ? "Saving PDF" : "Save as PDF"}
+            </Button>
           </div>
         </div>
       </header>

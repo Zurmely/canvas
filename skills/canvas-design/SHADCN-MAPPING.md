@@ -32,7 +32,7 @@ Read generated source or current shadcn documentation for exact APIs. Components
 - Long content region → semantic HTML; do not force it into `ScrollArea`
 - Empty state → omit it in generated canvases rather than rendering placeholder UI
 
-Install only what the artifact needs. `CanvasShell` already requires `Button` and `DropdownMenu`.
+Install only what the artifact needs. `CanvasShell` already requires `Button`. Keep shipping `dropdown-menu` in the runtime for canvases that need it; the shell no longer imports it.
 
 ## Import pattern
 

@@ -36,7 +36,7 @@ Avoid pie charts with many slices, line charts for unordered categories, and cha
 8. Reference configured colors as `var(--color-KEY)`.
 9. Keep hover tooltips on screen. Add a `canvas-print-only` exact-value table immediately after the chart so the PDF snapshot can show numbers without hover.
 10. Keep `ChartContainer` and every ancestor `w-full min-w-0`; never use a fixed pixel width.
-11. Do not write print CSS against `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Recharts measures from a 0×0 overflow box; width/height overrides hide the SVG. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the PDF export already constrains layout width before print.
+11. Do not write print CSS against `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Recharts measures from a 0×0 overflow box; width/height overrides hide the SVG. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the PDF snapshot uses the on-screen plot size. `react-is` is already a runtime dependency; do not add it when installing chart.
 12. Reserve Recharts `margin` for every axis title and category tick so labels are not clipped. Follow **Axis titles and clipping** below.
 13. Line and area series: `isAnimationActive={false}` and `dot={{ r: 3, clipDot: false }}`. Recharts clips dots to the plot by default, which hides the first and last points. Disable animation so the PDF export captures the finished series after the export resize.
 14. Give line/area category `XAxis` `padding={{ left: 16, right: 16 }}`. When a point sits at the series max (typical for a growth line), add Y-axis domain headroom so the last marker is not clipped at the top-right corner.
@@ -117,7 +117,7 @@ Required:
 
 - Cap `ChartContainer` height on screen as above. Prefer `h-[280px]` for typical plots.
 - Leave the `canvas-print-only` value table as a sibling of the chart.
-- Do not rely on print CSS `max-height` on `.recharts-*` internals. Width constraints happen before `window.print()`.
+- Do not rely on print CSS `max-height` on `.recharts-*` internals. The PDF snapshot keeps the on-screen plot size.
 
 ## Required context
 

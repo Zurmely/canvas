@@ -18,13 +18,14 @@ The script:
 
 1. Adds `.canvas/` to the workspace `.gitignore`.
 2. Creates a minimal Vite React TypeScript project under `.canvas/`.
-3. Installs current React, Vite, Tailwind CSS, shadcn, and single-file build dependencies.
-4. Initializes shadcn for Vite.
+3. Copies the skill's pinned `package.json` (and lockfile when present) and runs one `npm install --legacy-peer-deps` (or `npm ci` when the lockfile is present). Pins include Vite 6, `@vitejs/plugin-react` 4, TypeScript 5.7, `react-is`, `html-to-image`, and `jspdf`.
+4. Initializes shadcn with `npx shadcn init --defaults --template vite --base base --yes`.
 5. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
-6. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `22`).
-7. Copies `CanvasShell`, print CSS, and the PDF export from the skill's `runtime/` templates, plus the single-file build utility.
+6. Writes the owned Vite config (external canvas resolver) and copies `scripts/build.mjs`.
+7. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `23`).
+8. Copies `CanvasShell`, print CSS, and the PDF export from the skill's `runtime/` templates.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell/print files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, or `21` with valid mode and look syncs in place to `22`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, and build files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, or `22` with valid mode and look syncs in place to `23`.
 
 ## Reset a broken setup
 
@@ -87,7 +88,7 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 The priority is screen. **Save as PDF** is a share snapshot of the live page, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the export cannot infer. Do not reverse that order.
 
-`CanvasShell` offers **Portrait** (1080 wide) and **Landscape** (1920 wide). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, hides interactive chrome (tab lists, chevrons, tooltips, selects), sizes one `@page` to the full canvas (chosen width, content height, with inset), remasures Recharts, then calls `window.print()`. There are no slides and no authored page breaks. The user should keep **Save as PDF** and not override the paper size or margins.
+`CanvasShell` offers a single **Save as PDF** button (Cmd/Ctrl+P runs the same action). At export it expands disclosures and `<details>`, expands every tab panel into a labeled section, hides interactive chrome (tab lists, chevrons, tooltips, selects), captures the live canvas at its on-screen width, and downloads one PDF page as tall as the content. There are no slides, no orientation picker, and no authored page breaks.
 
 Do not author `print:text-*` or enlarge on-screen type for the PDF. The snapshot keeps on-screen type.
 
@@ -102,7 +103,7 @@ Tabs stay on screen. Keep every `TabsContent` mounted so the export can print al
 
 Filter controls that slice data belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Do not leave the PDF showing only the currently selected slice.
 
-Export paints `@page`, `html`, `body`, and `.canvas-root` with `var(--background)` so the PDF sheet matches the on-screen page. The PDF uses the same light or dark tokens as the on-screen canvas. Do not force `color-scheme: light` while `.dark` is still applied. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the export already constrains width before print.
+Export captures `.canvas-root` at the live layout width (no 1080/1920 reflow). The PDF uses the same light or dark tokens as the on-screen canvas. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the snapshot uses the on-screen plot size.
 
 ## Add shadcn components
 
@@ -126,7 +127,7 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 22`.
+- `.canvas/config.json` has `schemaVersion: 23`.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.

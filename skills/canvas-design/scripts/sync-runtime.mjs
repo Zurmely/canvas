@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 
+import { execFileSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
-const CURRENT_SCHEMA = 22
+const SRC_OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
+const CURRENT_SCHEMA = 23
+const PINNED_RUNTIME_DEPS = {
+  "react-is": "19.2.8",
+  "html-to-image": "1.11.13",
+  jspdf: "4.2.1",
+}
+const PINNED_TYPESCRIPT = "5.7.3"
 
 function skillRootFromThisFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -36,17 +43,20 @@ function ensureDropdownMenu(runtimeRoot, templates) {
   copyFileSync(join(templates, "dropdown-menu.tsx"), dropdownPath)
 }
 
+function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"))
+  } catch {
+    return null
+  }
+}
+
 function readConfig(runtimeRoot) {
   const configPath = join(runtimeRoot, "config.json")
   if (!existsSync(configPath)) {
     return null
   }
-
-  try {
-    return JSON.parse(readFileSync(configPath, "utf8"))
-  } catch {
-    return null
-  }
+  return readJson(configPath)
 }
 
 function upgradeConfig(runtimeRoot) {
@@ -64,14 +74,63 @@ function upgradeConfig(runtimeRoot) {
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 }
 
+function packageVersion(runtimeRoot, name) {
+  const pkg = readJson(join(runtimeRoot, "node_modules", name, "package.json"))
+  return typeof pkg?.version === "string" ? pkg.version : null
+}
+
+function hasDeclaredDep(pkg, name) {
+  return Boolean(pkg?.dependencies?.[name] || pkg?.devDependencies?.[name])
+}
+
+function ensureRuntimeDeps(runtimeRoot) {
+  if (!existsSync(join(runtimeRoot, "package.json"))) {
+    return
+  }
+
+  const pkg = readJson(join(runtimeRoot, "package.json")) ?? {}
+  const missingRuntime = Object.entries(PINNED_RUNTIME_DEPS)
+    .filter(([name]) => !hasDeclaredDep(pkg, name) && !packageVersion(runtimeRoot, name))
+    .map(([name, version]) => `${name}@${version}`)
+
+  if (missingRuntime.length) {
+    console.log(`Installing missing Canvas runtime deps: ${missingRuntime.join(" ")}`)
+    execFileSync(
+      "npm",
+      ["install", "--legacy-peer-deps", "--no-audit", "--no-fund", "--save", ...missingRuntime],
+      { cwd: runtimeRoot, stdio: "inherit" },
+    )
+  }
+
+  const typescriptVersion = packageVersion(runtimeRoot, "typescript")
+  const typescriptMajor = typescriptVersion ? Number.parseInt(typescriptVersion.split(".")[0], 10) : 0
+  if (typescriptMajor >= 6) {
+    console.log(`Pinning TypeScript ${PINNED_TYPESCRIPT} (found ${typescriptVersion})`)
+    execFileSync(
+      "npm",
+      [
+        "install",
+        "--legacy-peer-deps",
+        "--no-audit",
+        "--no-fund",
+        "--save-dev",
+        `typescript@${PINNED_TYPESCRIPT}`,
+      ],
+      { cwd: runtimeRoot, stdio: "inherit" },
+    )
+  }
+}
+
 export function syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema = true } = {}) {
   const runtimeRoot = join(resolve(workspaceRoot), ".canvas")
-  const templates = join(skillRootFromThisFile(), "runtime")
+  const skillRoot = skillRootFromThisFile()
+  const templates = join(skillRoot, "runtime")
   const srcRoot = join(runtimeRoot, "src")
 
   mkdirSync(srcRoot, { recursive: true })
+  mkdirSync(join(runtimeRoot, "scripts"), { recursive: true })
 
-  for (const fileName of OWNED_FILES) {
+  for (const fileName of SRC_OWNED_FILES) {
     const source = join(templates, fileName)
     if (!existsSync(source)) {
       throw new Error(`Missing runtime template: ${source}`)
@@ -79,8 +138,12 @@ export function syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema = true } 
     copyFileSync(source, join(srcRoot, fileName))
   }
 
+  copyFileSync(join(templates, "vite.config.ts"), join(runtimeRoot, "vite.config.ts"))
+  copyFileSync(join(skillRoot, "scripts/build.mjs"), join(runtimeRoot, "scripts/build.mjs"))
+
   ensurePrintCssImport(runtimeRoot)
   ensureDropdownMenu(runtimeRoot, templates)
+  ensureRuntimeDeps(runtimeRoot)
 
   if (upgradeConfigSchema) {
     upgradeConfig(runtimeRoot)

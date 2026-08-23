@@ -57,7 +57,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
 - Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
-- Save as PDF of the whole page (portrait or landscape), with interactions flattened so accordions, tabs, and similar controls read as static sections
+- Save as PDF of the whole page as one file, with interactions flattened so accordions, tabs, and similar controls read as static sections
 - Optional one-file HTML export with no sibling assets
 
 ## Layout
@@ -72,14 +72,18 @@ Re-running the same command overwrites the installed skill with the latest from 
         ├── SCAFFOLD.md           # First-use runtime setup
         ├── SHADCN-MAPPING.md     # Component selection
         ├── CHARTS.md             # Chart guidance
-        ├── runtime/              # CanvasShell, print CSS, and PDF export
+        ├── runtime/              # CanvasShell, print CSS, PDF export, Vite config, pinned package.json
         │   ├── dropdown-menu.tsx
         │   ├── canvas-shell.tsx
         │   ├── print-layout.ts
-        │   └── print.css
+        │   ├── print.css
+        │   ├── vite.config.ts
+        │   ├── package.json
+        │   └── package-lock.json
         └── scripts/
             ├── scaffold.mjs      # Creates the gitignored .canvas/ runtime
-            ├── sync-runtime.mjs  # Copies owned shell/print files into .canvas/
+            ├── sync-runtime.mjs  # Copies owned shell/print/Vite/build files into .canvas/
+            ├── build.mjs         # Copied into .canvas/ to typecheck and bundle a canvas
             └── reset-runtime.mjs # Deletes that runtime so first-use can run again
 ```
 

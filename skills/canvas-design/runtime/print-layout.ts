@@ -1,12 +1,8 @@
-export type PrintOrientation = "portrait" | "landscape"
+import { toPng } from "html-to-image"
+import { jsPDF } from "jspdf"
 
-export const PAGE_WIDTHS = {
-  portrait: 1080,
-  landscape: 1920,
-} as const
-
-const INSET_PX = 48
-const PAGE_STYLE_ID = "canvas-print-page-size"
+const PX_TO_MM = 25.4 / 96
+const MAX_PDF_MM = 14400
 
 type StyledElement = HTMLElement | SVGElement
 
@@ -335,71 +331,71 @@ async function expandTabs(restorer: Restorer) {
   }
 }
 
-function applyPrintWidth(orientation: PrintOrientation, restorer: Restorer) {
-  const root = document.querySelector(".canvas-root")
-  const main = root?.querySelector(":scope > main")
-  if (!(root instanceof HTMLElement)) {
-    return
-  }
-
-  const innerWidth = PAGE_WIDTHS[orientation] - INSET_PX * 2
-
+function prepareCapture(restorer: Restorer) {
   restorer.setStyle(document.documentElement, "height", "auto")
   restorer.setStyle(document.body, "height", "auto")
   restorer.setStyle(document.documentElement, "overflow", "visible")
   restorer.setStyle(document.body, "overflow", "visible")
 
-  restorer.setStyle(root, "width", `${innerWidth}px`)
-  restorer.setStyle(root, "max-width", `${innerWidth}px`)
+  const root = document.querySelector(".canvas-root")
+  if (!(root instanceof HTMLElement)) {
+    return
+  }
+
   restorer.setStyle(root, "min-height", "auto")
-  restorer.setStyle(root, "box-sizing", "border-box")
-  restorer.setStyle(root, "padding", "0px")
-  restorer.setStyle(root, "margin-left", "auto")
-  restorer.setStyle(root, "margin-right", "auto")
+  restorer.setStyle(root, "height", "auto")
   restorer.setStyle(root, "overflow", "visible")
-
-  if (main instanceof HTMLElement) {
-    restorer.setStyle(main, "width", "100%")
-    restorer.setStyle(main, "max-width", "none")
-    restorer.setStyle(main, "padding-left", "0px")
-    restorer.setStyle(main, "padding-right", "0px")
-    restorer.setStyle(main, "overflow", "visible")
-  }
 }
 
-function applyWholePageSize(
-  orientation: PrintOrientation,
-  root: HTMLElement,
-  restorer: Restorer,
-) {
-  const pageWidth = PAGE_WIDTHS[orientation]
-  const contentHeight = Math.ceil(
-    Math.max(root.scrollHeight, root.getBoundingClientRect().height),
-  )
-  const pageHeight = contentHeight + INSET_PX * 2 + 2
-
-  restorer.setAttr(document.documentElement, "data-canvas-print-orient", orientation)
-
-  const existing = document.getElementById(PAGE_STYLE_ID)
-  const style = existing instanceof HTMLStyleElement ? existing : document.createElement("style")
-  style.id = PAGE_STYLE_ID
-  style.textContent = `@page { size: ${pageWidth}px ${pageHeight}px; margin: ${INSET_PX}px; background: var(--background); }`
-  if (!existing) {
-    document.head.append(style)
-    restorer.add(() => style.remove())
-  } else {
-    const previous = existing.textContent
-    restorer.add(() => {
-      if (previous) {
-        existing.textContent = previous
-      } else {
-        existing.remove()
-      }
-    })
-  }
+function pdfFilename() {
+  const heading = document.querySelector(".canvas-root h1")
+  const raw = (heading?.textContent || document.title || "canvas").trim()
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^\w\s-]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+  return `${slug || "canvas"}.pdf`
 }
 
-export async function printCanvas(orientation: PrintOrientation) {
+async function captureRoot(root: HTMLElement, pixelRatio: number) {
+  const width = Math.max(1, Math.ceil(root.scrollWidth))
+  const height = Math.max(1, Math.ceil(root.scrollHeight))
+  const backgroundColor = getComputedStyle(root).backgroundColor || "#ffffff"
+  return toPng(root, {
+    width,
+    height,
+    pixelRatio,
+    cacheBust: true,
+    backgroundColor,
+    style: {
+      width: `${width}px`,
+      height: `${height}px`,
+    },
+  })
+}
+
+function downloadPdf(dataUrl: string, widthPx: number, heightPx: number, filename: string) {
+  let widthMm = widthPx * PX_TO_MM
+  let heightMm = heightPx * PX_TO_MM
+  if (widthMm > MAX_PDF_MM || heightMm > MAX_PDF_MM) {
+    const scale = Math.min(MAX_PDF_MM / widthMm, MAX_PDF_MM / heightMm)
+    widthMm *= scale
+    heightMm *= scale
+  }
+
+  const pdf = new jsPDF({
+    orientation: widthMm >= heightMm ? "landscape" : "portrait",
+    unit: "mm",
+    format: [widthMm, heightMm],
+    compress: true,
+  })
+  pdf.addImage(dataUrl, "PNG", 0, 0, widthMm, heightMm)
+  pdf.save(filename)
+}
+
+export async function printCanvas() {
   if (printing) {
     return
   }
@@ -412,29 +408,24 @@ export async function printCanvas(orientation: PrintOrientation) {
     await expandAriaDisclosures(restorer)
     expandDetails(restorer)
     await expandTabs(restorer)
-    applyPrintWidth(orientation, restorer)
+    prepareCapture(restorer)
     await settleLayout()
 
     const root = document.querySelector(".canvas-root")
-    if (root instanceof HTMLElement) {
-      applyWholePageSize(orientation, root, restorer)
+    if (!(root instanceof HTMLElement)) {
+      return
     }
 
-    await new Promise<void>((resolve) => {
-      let settled = false
-      const finish = () => {
-        if (settled) {
-          return
-        }
-        settled = true
-        window.clearTimeout(timeout)
-        window.removeEventListener("afterprint", finish)
-        resolve()
-      }
-      const timeout = window.setTimeout(finish, 60_000)
-      window.addEventListener("afterprint", finish)
-      window.print()
-    })
+    let dataUrl: string
+    try {
+      dataUrl = await captureRoot(root, 2)
+    } catch {
+      dataUrl = await captureRoot(root, 1)
+    }
+
+    const width = Math.max(1, Math.ceil(root.scrollWidth))
+    const height = Math.max(1, Math.ceil(root.scrollHeight))
+    downloadPdf(dataUrl, width, height, pdfFilename())
   } finally {
     restorer.restore()
     printing = false
