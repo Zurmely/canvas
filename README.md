@@ -55,6 +55,7 @@ Re-running the same command overwrites the installed skill with the latest from 
 ## What it produces
 
 - Semantic layout, shadcn components imported from source, and charts via Recharts
+- Optional public-domain stills from Wikimedia Commons (and similar uncopyrighted hosts), embedded so the page stays self-contained
 - Either stock shadcn colors or a palette matched to the page subject (chosen once per workspace; no theme picker on the page)
 - Light and dark themes that follow the system until you toggle
 - Optional Export as PDF of the whole page as one vector file (selectable text and SVG charts), written from the terminal after the page is built. After creation you can open the page, present it, or export a PDF in light or dark. Interactions are flattened so accordions, tabs, and similar controls read as static sections, and scrollable regions expand so nothing is clipped.
@@ -72,6 +73,7 @@ Re-running the same command overwrites the installed skill with the latest from 
         ├── SCAFFOLD.md           # First-use runtime setup
         ├── SHADCN-MAPPING.md     # Component selection
         ├── CHARTS.md             # Chart guidance
+        ├── IMAGES.md             # Public-domain stills from Wikimedia Commons
         ├── runtime/              # CanvasShell, print CSS, print layout, Vite config, pinned package.json
         │   ├── dropdown-menu.tsx
         │   ├── canvas-shell.tsx
@@ -81,11 +83,12 @@ Re-running the same command overwrites the installed skill with the latest from 
         │   ├── package.json
         │   └── package-lock.json
         └── scripts/
-            ├── scaffold.mjs      # Creates the gitignored .canvas/ runtime
-            ├── sync-runtime.mjs  # Copies owned shell/print/Vite/build files into .canvas/
-            ├── build.mjs         # Copied into .canvas/ to typecheck and bundle a canvas
-            ├── export-pdf.mjs    # Copied into .canvas/ to convert a built page to PDF
-            └── reset-runtime.mjs # Deletes that runtime so first-use can run again
+            ├── scaffold.mjs              # Creates the gitignored .canvas/ runtime
+            ├── sync-runtime.mjs          # Copies owned shell/print/Vite/build files into .canvas/
+            ├── build.mjs                 # Copied into .canvas/ to typecheck and bundle a canvas
+            ├── export-pdf.mjs            # Copied into .canvas/ to convert a built page to PDF
+            ├── fetch-commons-image.mjs   # Author-time public-domain stills from Wikimedia Commons
+            └── reset-runtime.mjs         # Deletes that runtime so first-use can run again
 ```
 
 `npx skills add Zurmely/canvas` discovers `skills/canvas-design/` and copies only that folder into `.cursor/skills/canvas-design/` (or `~/.cursor/skills/canvas-design/` with `-g`). It does not copy this README or `.gitignore`.

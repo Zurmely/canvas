@@ -109,7 +109,7 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 2. Complete first-use setup if needed. Do not narrate setup, config, or runtime checks to the user.
 3. Gather real content and identify the primary user task.
 4. Resolve the anchor path and output filenames before writing.
-5. Read [SHADCN-MAPPING.md](SHADCN-MAPPING.md). For charts, also read [CHARTS.md](CHARTS.md).
+5. Read [SHADCN-MAPPING.md](SHADCN-MAPPING.md). For charts, also read [CHARTS.md](CHARTS.md). If a real photograph, portrait, map, artwork, or specimen would help the reader identify the subject, also read [IMAGES.md](IMAGES.md) and fetch an uncopyrighted image before authoring.
 6. Add only the required shadcn components to `.canvas/`.
 7. Author a default-exported React component in the target `.canvas.tsx` file. Follow `themeMode` from `.canvas/config.json`. If it is `content`, override shadcn CSS variables on `:root` and `.dark` to match the subject, inject that stylesheet, and style only with semantic tokens. If it is `neutral`, do not override those variables or inject a subject palette. Do not include theming sections in the final canvas ever; theming is only useful for styling.
 8. Wrap every artifact in the shared `CanvasShell` from `@/canvas-shell`, passing the exact page title.
@@ -143,7 +143,8 @@ Keep the React source in HTML mode; it is the editable source of the self-contai
 - Size charts for the screen. Cap `ChartContainer` with `max-h-[26rem]` (or an explicit `h-[280px]`–`h-[320px]`) as a screen sanity limit. The PDF keeps that on-screen plot height; do not shrink plots to look like printed figures.
 - Never give cards, charts, tables, or their parents a fixed pixel width or positive `min-width`. Use `w-full`, `min-w-0`, responsive grids, and wrapping text so the screen layout can reflow and the PDF can capture the canvas.
 - Store interactive state in the canvas component. Do not add persistence unless the user requests it.
-- Embed artifact data in the source. No runtime network calls unless the user explicitly requests a live data source.
+- Embed artifact data in the source. No runtime network calls unless the user explicitly requests a live data source. Do not hotlink images.
+- When a real image would help the reader identify the subject, fetch a public-domain or CC0 file at authoring time with `scripts/fetch-commons-image.mjs` and embed it. Follow [IMAGES.md](IMAGES.md). Omit the image if none is suitable; never decorate with stock, generated, or copyrighted photos.
 - Never render placeholders, empty charts, empty tables, fabricated samples, or “No data” sections. Omit empty sections; if the entire artifact would be empty, ask for the missing data.
 
 ## Required shell behavior
@@ -178,6 +179,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - Support light and dark system themes through the scaffold's variables.
 - Prefer flat surfaces, subtle borders, restrained radius, and clear spacing.
 - No gradients, decorative emojis, giant type on screen, rainbow coloring, or ornamental borders. The PDF keeps on-screen type.
+- Photographs, portraits, maps, artworks, and specimens are content, not decoration. Follow [IMAGES.md](IMAGES.md) when they help identify the subject. Do not add stock, generated, or loosely related pictures.
 - Use shadows only when a standard shadcn component uses one for layering.
 - Establish hierarchy through layout, spacing, typography, and one deliberate accent.
 - Avoid a wall of equal cards. Mix open sections, one dominant artifact, compact summaries, and bounded entities.
@@ -200,6 +202,7 @@ Do not include theming sections in the final canvas ever. Theming is only useful
 - No theming section, picker, swatch, or token sample is rendered.
 - Every displayed value comes from provided or inspected data.
 - No empty component or placeholder is rendered.
+- Images, if any, are embedded public-domain or CC0 files with alt text and a visible credit. No hotlinked URLs, decorative stock, generated pictures, or placeholder images.
 - The composition is not a uniform stack of cards.
 - Components are imported from `.canvas` shadcn source, not reimplemented.
 - The title, system-aware theme toggle, and conditional back-to-top control come from `CanvasShell`. The live page has no Save as PDF control.
@@ -323,3 +326,4 @@ Use an absolute markdown link. Name the page in plain language. Describe what wa
 - [SCAFFOLD.md](SCAFFOLD.md) — first-use runtime setup and validation
 - [SHADCN-MAPPING.md](SHADCN-MAPPING.md) — component selection and composition
 - [CHARTS.md](CHARTS.md) — Recharts and shadcn chart guidance
+- [IMAGES.md](IMAGES.md) — public-domain stills from Wikimedia Commons and similar hosts

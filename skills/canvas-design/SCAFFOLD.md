@@ -83,7 +83,7 @@ For HTML mode, build beside the source:
 node .canvas/scripts/build.mjs path/to/name.canvas.tsx path/to/name.html
 ```
 
-The build script writes one HTML file with JavaScript and CSS inlined. Do not use assets from `public/`; they are not guaranteed to be inlined. Embed small images as data URLs when a truly self-contained artifact requires them.
+The build script writes one HTML file with JavaScript and CSS inlined. Do not use assets from `public/`; they are not guaranteed to be inlined. When a real photograph, portrait, map, artwork, or specimen belongs on the page, fetch a public-domain or CC0 file at authoring time with `scripts/fetch-commons-image.mjs` (see [IMAGES.md](IMAGES.md)). Import the sibling `*.image.ts` module; the bundle inlines it. Never hotlink. Typecheck includes `*.image.ts` next to the canvas source.
 
 ## PDF export (not print design)
 

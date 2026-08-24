@@ -1,6 +1,7 @@
 .canvas/
 .cursor/
 *.canvas.tsx
+*.image.ts
 *.html
 *.pdf
 .DS_Store
