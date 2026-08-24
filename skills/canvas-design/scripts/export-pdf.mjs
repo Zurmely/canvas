@@ -9,9 +9,15 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const PLAYWRIGHT_SPEC = "playwright@1.55.0"
 const VIEWPORT = { width: 1280, height: 800 }
 
-const [inputArg, outputArg] = process.argv.slice(2)
+const [inputArg, outputArg, themeArg] = process.argv.slice(2)
 if (!inputArg || !outputArg) {
-  console.error("Usage: export-pdf.mjs <input.html> <output.pdf>")
+  console.error("Usage: export-pdf.mjs <input.html> <output.pdf> [light|dark]")
+  process.exit(1)
+}
+
+const theme = themeArg || "light"
+if (theme !== "light" && theme !== "dark") {
+  console.error("Theme must be light or dark")
   process.exit(1)
 }
 
@@ -118,12 +124,16 @@ async function exportPdf() {
 
   try {
     const page = await browser.newPage({
-      colorScheme: "light",
+      colorScheme: theme,
       viewport: VIEWPORT,
     })
     await page.goto(pathToFileURL(inputHtml).href, { waitUntil: "load" })
     await page.waitForSelector(".canvas-root")
-    await page.emulateMedia({ colorScheme: "light", media: "print" })
+    await page.emulateMedia({ colorScheme: theme, media: "print" })
+    await page.evaluate((isDark) => {
+      document.documentElement.classList.toggle("dark", isDark)
+      document.documentElement.style.colorScheme = isDark ? "dark" : "light"
+    }, theme === "dark")
     await page.addScriptTag({ path: bundlePath })
     await page.evaluate(async () => {
       await globalThis.CanvasPrintLayout.prepareCanvasForPdf()

@@ -75,6 +75,19 @@ html.canvas-print-preparing .canvas-print-tab-heading:first-child {
   margin-top: 0;
 }
 
+html.canvas-print-preparing table,
+html.canvas-print-preparing thead,
+html.canvas-print-preparing tbody,
+html.canvas-print-preparing tfoot,
+html.canvas-print-preparing tr,
+html.canvas-print-preparing th,
+html.canvas-print-preparing td,
+html.canvas-print-preparing [data-slot="card"],
+html.canvas-print-preparing [data-slot="card-content"],
+html.canvas-print-preparing [data-slot="table-container"] {
+  height: auto !important;
+}
+
 html.canvas-print-preparing .canvas-root > main {
   overflow: visible !important;
 }
@@ -209,10 +222,6 @@ html.canvas-print-preparing code {
     overflow: visible !important;
   }
 
-  .canvas-root > main .flex:not([data-slot="chart"]) {
-    flex-wrap: wrap !important;
-  }
-
   [class*="overflow-x-"]:not([class*="recharts-"]) {
     overflow-x: visible !important;
   }
@@ -262,6 +271,19 @@ html.canvas-print-preparing code {
 
   .canvas-print-tab-heading:first-child {
     margin-top: 0;
+  }
+
+  table,
+  thead,
+  tbody,
+  tfoot,
+  tr,
+  th,
+  td,
+  [data-slot="card"],
+  [data-slot="card-content"],
+  [data-slot="table-container"] {
+    height: auto !important;
   }
 
   table {

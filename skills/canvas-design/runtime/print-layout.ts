@@ -424,7 +424,6 @@ function growAncestors(el: HTMLElement, root: HTMLElement, restorer: Restorer) {
     }
     if (parent.offsetHeight + OVERFLOW_EPSILON < neededHeight) {
       restorer.setStyle(parent, "min-height", `${neededHeight}px`)
-      restorer.setStyle(parent, "height", `${neededHeight}px`)
     }
 
     if (parent === root) {
@@ -432,6 +431,45 @@ function growAncestors(el: HTMLElement, root: HTMLElement, restorer: Restorer) {
     }
     child = parent
   }
+}
+
+function isExplicitYScroll(el: HTMLElement, style: CSSStyleDeclaration) {
+  const inlineOverflow = el.style.overflow
+  const inlineOverflowY = el.style.overflowY
+  if (inlineOverflowY && inlineOverflowY !== "visible") {
+    return true
+  }
+  if (inlineOverflow && SCROLL_OVERFLOW.has(inlineOverflow)) {
+    return true
+  }
+  if (style.maxHeight !== "none") {
+    return true
+  }
+
+  const className = typeof el.className === "string" ? el.className : ""
+  if (/\boverflow-y-(auto|scroll|hidden)\b/.test(className)) {
+    return true
+  }
+  if (/\boverflow-(auto|scroll|hidden)\b/.test(className)) {
+    return true
+  }
+  return false
+}
+
+function scrollsVertically(el: HTMLElement, style: CSSStyleDeclaration, scrollX: boolean) {
+  if (!SCROLL_OVERFLOW.has(style.overflowY)) {
+    return false
+  }
+  if (el.scrollHeight <= el.clientHeight + OVERFLOW_EPSILON) {
+    return false
+  }
+  if (scrollX && !isExplicitYScroll(el, style)) {
+    const yDelta = el.scrollHeight - el.clientHeight
+    if (yDelta <= 24) {
+      return false
+    }
+  }
+  return true
 }
 
 function expandOverflow(root: HTMLElement, restorer: Restorer) {
@@ -456,8 +494,7 @@ function expandOverflow(root: HTMLElement, restorer: Restorer) {
 
     const scrollX =
       SCROLL_OVERFLOW.has(style.overflowX) && node.scrollWidth > node.clientWidth + OVERFLOW_EPSILON
-    const scrollY =
-      SCROLL_OVERFLOW.has(style.overflowY) && node.scrollHeight > node.clientHeight + OVERFLOW_EPSILON
+    const scrollY = scrollsVertically(node, style, scrollX)
 
     if (!scrollX && !scrollY) {
       continue
@@ -526,7 +563,7 @@ function paddedBorderBox(el: HTMLElement) {
 
 function pageSizeMm(widthPx: number, heightPx: number) {
   let widthMm = widthPx * PX_TO_MM
-  let heightMm = heightPx * PX_TO_MM + 2
+  let heightMm = heightPx * PX_TO_MM
   if (widthMm > MAX_PAGE_MM || heightMm > MAX_PAGE_MM) {
     const scale = Math.min(MAX_PAGE_MM / widthMm, MAX_PAGE_MM / heightMm)
     widthMm *= scale

@@ -23,10 +23,10 @@ The script:
 5. Initializes shadcn with `npx shadcn init --defaults --template vite --base base --yes`.
 6. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
 7. Writes the owned Vite config (external canvas resolver) and copies `scripts/build.mjs` and `scripts/export-pdf.mjs`.
-8. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `28`).
+8. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `29`).
 9. Copies `CanvasShell`, print CSS, and print layout from the skill's `runtime/` templates.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, build, and PDF export files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, or `27` with valid mode and look syncs in place to `28`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, build, and PDF export files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, or `28` with valid mode and look syncs in place to `29`.
 
 ## Reset a broken setup
 
@@ -87,15 +87,15 @@ The build script writes one HTML file with JavaScript and CSS inlined. Do not us
 
 ## PDF export (not print design)
 
-The priority is screen. **Save as PDF** is a share snapshot of the live page, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the export cannot infer. Do not reverse that order.
+The priority is screen. **Export as PDF** is a share snapshot of the live page, not a brief to design slides. Author the on-screen layout first — grids, filters, hover, scrolling. Then mark only what the export cannot infer. Do not reverse that order.
 
-The live `CanvasShell` has no Save as PDF button. After the page builds, if the user chooses **Save as PDF** or **Present page and PDF**, run the CLI export against the already-built self-contained HTML. Do not open a browser for the user and do not start a preview server for these options. For **Save as PDF**, open the written PDF. For **Present page and PDF**, open nothing; show both the page and PDF links.
+The live `CanvasShell` has no Save as PDF button. After the page builds, if the user chooses **Export as PDF**, resolve the PDF theme from [SKILL.md](SKILL.md), then run the CLI export against the already-built self-contained HTML. Do not open a browser for the user and do not start a preview server. Open the written PDF.
 
 ```bash
-node .canvas/scripts/export-pdf.mjs path/to/name.html path/to/name.pdf
+node .canvas/scripts/export-pdf.mjs path/to/name.html path/to/name.pdf light
 ```
 
-HTML mode uses the sibling `.html`. React mode uses the validated preview under `.canvas/preview/`. Write the PDF beside the canvas source. The script prepares the page with the same print layout as before: expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, and hides interactive chrome (tab lists, chevrons, tooltips, selects). It then writes one custom-sized vector page. Overflow still expands; padding is kept. Text is selectable; charts stay vector. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. `@media print` remains for File → Print only. There are no slides, no orientation picker, and no authored page breaks.
+Pass `dark` instead of `light` when that theme was chosen. HTML mode uses the sibling `.html`. React mode uses the validated preview under `.canvas/preview/`. Write the PDF beside the canvas source. The script prepares the page with the same print layout as before: expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, and hides interactive chrome (tab lists, chevrons, tooltips, selects). It then writes one custom-sized vector page. Overflow still expands; authored spacing is kept; row and line height are not inflated. Text is selectable; charts stay vector. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. `@media print` remains for File → Print only. There are no slides, no orientation picker, and no authored page breaks.
 
 Do not author `print:text-*` or enlarge on-screen type for the PDF. The export keeps on-screen type. Do not add print markup for overflow; expanding scroll containers is runtime-owned. Code blocks wrap instead of stretching the page.
 
@@ -110,7 +110,7 @@ Tabs stay on screen. Keep every `TabsContent` mounted so the export can print al
 
 Filter controls that slice data belong on screen. Hide the control with `canvas-print-hidden` only for the PDF snapshot. Render a `canvas-print-only` listing of the full dataset, grouped under headings that use the same category names as the filter. Do not leave the PDF showing only the currently selected slice.
 
-Export captures `.canvas-root` after expanding overflow (no 1080/1920 reflow). The PDF uses the same light or dark tokens as the on-screen canvas. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the snapshot uses the on-screen plot size. Do not expand Recharts overflow; plot clipping stays as authored.
+Export captures `.canvas-root` after expanding overflow (no 1080/1920 reflow). The PDF uses the light or dark theme passed to the export command. An optional `pdfTheme` of `light` or `dark` in `.canvas/config.json` means later exports skip the theme question. Never set width or height on `.recharts-wrapper`, `.recharts-responsive-container`, or `.recharts-surface`. Do not dispatch `window.resize` to remasure charts — Recharts v3 uses ResizeObserver, and the snapshot uses the on-screen plot size. Do not expand Recharts overflow; plot clipping stays as authored.
 
 ## Add shadcn components
 
@@ -134,7 +134,8 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 28`.
+- `.canvas/config.json` has `schemaVersion: 29`.
+- `.canvas/config.json` may record `pdfTheme` as `light` or `dark`; omit it to ask every time.
 - `.gitignore` contains `.canvas/` exactly once.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.
