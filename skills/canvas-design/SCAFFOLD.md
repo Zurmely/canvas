@@ -75,7 +75,7 @@ If the user chooses to open the React canvas after creation, start the shared pr
 npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
-Check for an existing matching server first. Keep the server running only because the user explicitly selected the preview option.
+Reuse an existing server only when it is this runtime's current Vite (working directory `.canvas`, version from `.canvas/package.json`, healthy after the latest scaffold or sync, and `/src/generated-entry.tsx` resolves). Do not reuse a leftover process that predates scaffold/sync or fails CSS/module imports. Keep the server running only because the user explicitly selected the preview option.
 
 For HTML mode, build beside the source:
 

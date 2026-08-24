@@ -254,7 +254,7 @@ React mode:
 Wait for the answer and do exactly what they select.
 
 - HTML mode, open: use the platform's normal file opener on the generated `.html`.
-- React mode, open: first check existing terminal processes so a matching server is not duplicated. Start `npm run dev -- --host 127.0.0.1 --port 4173 --strictPort` with `.canvas` as the shell working directory, verify Vite reached a healthy ready state, then open `http://127.0.0.1:4173/`.
+- React mode, open: first check existing terminal processes so a matching server is not duplicated. Reuse a process on port `4173` only when all of these are true: its working directory is `<workspace>/.canvas`; it is the runtime's local Vite from that folder's `node_modules` (the version in `.canvas/package.json`, currently Vite 6); it printed a healthy ready state after the latest scaffold or sync; and requesting `/src/generated-entry.tsx` does not fail with `Failed to resolve import`. Port occupancy is not enough. If the process started before scaffold or sync, reports a different Vite major, still has a native-config/`__dirname` warning from an old config, or cannot resolve `@/index.css` or canvas dependencies, stop it and start a fresh server. Then start `npm run dev -- --host 127.0.0.1 --port 4173 --strictPort` with `.canvas` as the shell working directory, verify Vite reached a healthy ready state, then open `http://127.0.0.1:4173/`.
 - **Present HTML** / **Present React**: perform no external open and start no server.
 - **Export as PDF**: do not open the page and do not start a preview server. Resolve the PDF theme, then convert the already-built self-contained HTML (HTML mode: the sibling `.html`; React mode: the validated preview under `.canvas/preview/`) with:
 
