@@ -27,7 +27,7 @@ Do not:
 
 ## First-use setup
 
-At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `29`.
+At the start of every invocation, locate the workspace root and check for `.canvas/config.json`. The current scaffold schema is `30`.
 
 ### Hard gate
 
@@ -53,19 +53,19 @@ Only then scaffold the runtime and create the artifact.
 
 Do not ask the user to choose a framework. Use Vite + React + TypeScript: it is the smallest official shadcn template that supports direct component source imports and reliable single-file bundling. Astro adds an unnecessary rendering and hydration layer for these interactive artifacts.
 
-After the answers, read [SCAFFOLD.md](SCAFFOLD.md), scaffold `.canvas/` with both choices, store them in `.canvas/config.json`, and add `.canvas/` to the workspace `.gitignore`. The ignored folder owns dependencies, shadcn component source, Vite configuration, shared styles, build scripts, and temporary output. Never put a canvas deliverable inside `.canvas/`.
+After the answers, read [SCAFFOLD.md](SCAFFOLD.md), scaffold `.canvas/` with both choices, store them in `.canvas/config.json`, and add `.canvas/` plus `*.canvas.jpg` (and `.jpeg`/`.png`/`.webp`/`.gif`) to the workspace `.gitignore`. The ignored `.canvas/` folder owns dependencies, shadcn component source, Vite configuration, shared styles, build scripts, and temporary output. Never put a canvas deliverable inside `.canvas/`.
 
-On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`, or `29`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
+On later invocations, reuse the stored choices when `schemaVersion` is `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`, `29`, or `30`, `outputMode` is `react` or `html`, and `themeMode` is `neutral` or `content`. After config is valid, silently run:
 
 ```bash
 node .cursor/skills/canvas-design/scripts/sync-runtime.mjs <workspace-root>
 ```
 
-Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, print layout, Vite config, the build script, and the PDF export script, adds `dropdown-menu` if missing, installs any missing runtime deps including Playwright, installs Chromium if missing, removes the retired in-browser PDF engine if present, and bumps `schemaVersion` to `29`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
+Use the absolute path to the skill's script if it is resolved from another location. That copy updates `CanvasShell`, print CSS, print layout, Vite config, the build script, and the PDF export script, adds `dropdown-menu` if missing, installs any missing runtime deps including Playwright, installs Chromium if missing, removes the retired in-browser PDF engine if present, adds canvas still ignore patterns (`*.canvas.jpg` and similar) if missing, and bumps `schemaVersion` to `30`. Do not narrate the sync. If `.canvas/config.json` exists, never re-run scaffold.
 
-If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `29`. If schema `18` already has a valid `themeMode`, only run the sync.
+If the config has `schemaVersion` `18` and a valid `outputMode` but no valid `themeMode`, do not reset. Ask only the look question, then update `.canvas/config.json` in place: set `themeMode` to `neutral` or `content` and keep the existing `outputMode`. Then run the sync script so the schema becomes `30`. If schema `18` already has a valid `themeMode`, only run the sync.
 
-If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`, or `29`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`. Ask the PDF theme question again when the user explicitly requests a different PDF theme, then update or clear `pdfTheme`.
+If the config is missing, malformed, or has a schema version other than `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`, `29`, or `30`, ask permission to reset the generated runtime; after reset, ask both first-use questions. Ask the format question again when the user explicitly requests a different output mode. Ask the look question again when the user explicitly requests a different look, then update `themeMode` in `.canvas/config.json`. Ask the PDF theme question again when the user explicitly requests a different PDF theme, then update or clear `pdfTheme`.
 
 If setup is broken or the scaffold schema is incompatible, read the reset section in [SCAFFOLD.md](SCAFFOLD.md). Never delete `.canvas/` without explicit user confirmation.
 
@@ -90,16 +90,26 @@ Use the CLI's current output and APIs as source of truth. Do not guess component
 
 ## Deliverable placement
 
-Determine the user's anchor:
+Determine the user's anchor, then create a kebab-case canvas folder there:
 
-- A referenced file → place the canvas beside that file.
-- A referenced directory → place it directly in that directory.
-- No filesystem reference → place it in the workspace root.
+- A referenced file → create `<name>/` beside that file.
+- A referenced directory → create `<name>/` inside that directory.
+- No filesystem reference → create `<name>/` in the workspace root.
 
-Use a descriptive kebab-case name:
+Put every deliverable inside that folder:
 
-- React mode: `<name>.canvas.tsx`
-- HTML mode: create `<name>.canvas.tsx`, then bundle `<name>.html` beside it.
+```text
+<name>/
+  <name>.canvas.tsx
+  <name>.html
+  <name>.pdf
+  curie.canvas.jpg
+```
+
+- React mode: `<name>/<name>.canvas.tsx`
+- HTML mode: create `<name>/<name>.canvas.tsx`, then bundle `<name>/<name>.html` in the same folder.
+- PDF export: write `<name>/<name>.pdf` in the same folder.
+- Stills: `*.canvas.jpg` (or `.jpeg`/`.png`/`.webp`/`.gif`) in the same folder. Those files are gitignored.
 
 Keep the React source in HTML mode; it is the editable source of the self-contained export.
 
@@ -259,13 +269,13 @@ Wait for the answer and do exactly what they select.
 - HTML mode, open: use the platform's normal file opener on the generated `.html`.
 - React mode, open: first check existing terminal processes so a matching server is not duplicated. Reuse a process on port `4173` only when all of these are true: its working directory is `<workspace>/.canvas`; it is the runtime's local Vite from that folder's `node_modules` (the version in `.canvas/package.json`, currently Vite 6); it printed a healthy ready state after the latest scaffold or sync; and requesting `/src/generated-entry.tsx` does not fail with `Failed to resolve import`. Port occupancy is not enough. If the process started before scaffold or sync, reports a different Vite major, still has a native-config/`__dirname` warning from an old config, or cannot resolve `@/index.css` or canvas dependencies, stop it and start a fresh server. Then start `npm run dev -- --host 127.0.0.1 --port 4173 --strictPort` with `.canvas` as the shell working directory, verify Vite reached a healthy ready state, then open `http://127.0.0.1:4173/`.
 - **Present HTML** / **Present React**: perform no external open and start no server.
-- **Export as PDF**: do not open the page and do not start a preview server. Resolve the PDF theme, then convert the already-built self-contained HTML (HTML mode: the sibling `.html`; React mode: the validated preview under `.canvas/preview/`) with:
+- **Export as PDF**: do not open the page and do not start a preview server. Resolve the PDF theme, then convert the already-built self-contained HTML (HTML mode: the `.html` in the canvas folder; React mode: the validated preview under `.canvas/preview/`) with:
 
 ```bash
 node .canvas/scripts/export-pdf.mjs <input.html> <output.pdf> <light|dark>
 ```
 
-  Write `<name>.pdf` beside the canvas source. Then open the PDF with the platform's normal file opener. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. If export fails, keep the page artifact and say the PDF could not be created.
+  Write `<name>.pdf` in the canvas folder beside the source. Then open the PDF with the platform's normal file opener. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. If export fails, keep the page artifact and say the PDF could not be created.
 
 **Question 2 (PDF theme).** Ask only when exporting a PDF. If `.canvas/config.json` already has `pdfTheme` of `light` or `dark`, skip this question and use that value. Otherwise call `AskQuestion` with prompt `What theme do you want?` and these options:
 
@@ -317,7 +327,7 @@ Link target:
 - HTML mode, open or present → the generated page file.
 - React mode after opening → the preview URL that was opened.
 - React mode, present only → the validated preview under `.canvas/preview/`.
-- Export as PDF → the written `.pdf` beside the canvas source. Do not also link the page.
+- Export as PDF → the written `.pdf` in the canvas folder. Do not also link the page.
 
 Use an absolute markdown link. Name the page in plain language. Describe what was actually created rather than only saying the task is complete.
 

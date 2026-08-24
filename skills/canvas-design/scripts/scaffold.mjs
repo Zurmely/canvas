@@ -1,18 +1,11 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process"
-import {
-  appendFileSync,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { CURRENT_SCHEMA, ensurePdfDeps, syncCanvasRuntime } from "./sync-runtime.mjs"
+import { CURRENT_SCHEMA, ensureGitignore, ensurePdfDeps, syncCanvasRuntime } from "./sync-runtime.mjs"
 
 const [rootArg, modeArg, themeArg] = process.argv.slice(2)
 
@@ -57,11 +50,7 @@ function run(command, args, cwd = workspaceRoot, extraEnv = {}) {
 mkdirSync(runtimeRoot, { recursive: true })
 mkdirSync(join(runtimeRoot, "scripts"), { recursive: true })
 
-const gitignorePath = join(workspaceRoot, ".gitignore")
-const ignored = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : ""
-if (!ignored.split(/\r?\n/).includes(".canvas/")) {
-  appendFileSync(gitignorePath, `${ignored.length && !ignored.endsWith("\n") ? "\n" : ""}.canvas/\n`)
-}
+ensureGitignore(workspaceRoot)
 
 copyFromSkill("runtime/package.json", "package.json")
 write(".npmrc", "legacy-peer-deps=true\n")

@@ -72,11 +72,7 @@ writeFileSync(
           "*": ["./node_modules/*"],
         },
       },
-      include: [
-        "src",
-        source,
-        join(dirname(source), "*.image.ts").split("\\").join("/"),
-      ],
+      include: ["src", source],
     },
     null,
     2,

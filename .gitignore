@@ -1,7 +1,11 @@
 .canvas/
 .cursor/
 *.canvas.tsx
-*.image.ts
+*.canvas.jpg
+*.canvas.jpeg
+*.canvas.png
+*.canvas.webp
+*.canvas.gif
 *.html
 *.pdf
 .DS_Store

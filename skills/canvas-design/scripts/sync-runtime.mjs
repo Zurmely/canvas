@@ -1,13 +1,21 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const SRC_OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts"]
-export const CURRENT_SCHEMA = 29
+const SRC_OWNED_FILES = ["canvas-shell.tsx", "print.css", "print-layout.ts", "vite-env.d.ts"]
+export const CURRENT_SCHEMA = 30
+export const GITIGNORE_ENTRIES = [
+  ".canvas/",
+  "*.canvas.jpg",
+  "*.canvas.jpeg",
+  "*.canvas.png",
+  "*.canvas.webp",
+  "*.canvas.gif",
+]
 const PINNED_RUNTIME_DEPS = {
   "react-is": "19.2.8",
 }
@@ -17,6 +25,19 @@ export const PINNED_PLAYWRIGHT = "1.55.0"
 
 function skillRootFromThisFile() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..")
+}
+
+export function ensureGitignore(workspaceRoot) {
+  const gitignorePath = join(resolve(workspaceRoot), ".gitignore")
+  const existing = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : ""
+  const lines = new Set(existing.split(/\r?\n/))
+  const missing = GITIGNORE_ENTRIES.filter((entry) => !lines.has(entry))
+  if (!missing.length) {
+    return
+  }
+
+  const prefix = existing.length && !existing.endsWith("\n") ? "\n" : ""
+  appendFileSync(gitignorePath, `${prefix}${missing.join("\n")}\n`)
 }
 
 function ensurePrintCssImport(runtimeRoot) {
@@ -205,6 +226,8 @@ export function syncCanvasRuntime(workspaceRoot, { upgradeConfigSchema = true } 
   const skillRoot = skillRootFromThisFile()
   const templates = join(skillRoot, "runtime")
   const srcRoot = join(runtimeRoot, "src")
+
+  ensureGitignore(workspaceRoot)
 
   mkdirSync(srcRoot, { recursive: true })
   mkdirSync(join(runtimeRoot, "scripts"), { recursive: true })

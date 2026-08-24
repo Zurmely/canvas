@@ -16,17 +16,17 @@ Run only the scaffold script from the workspace root. The script sets `.canvas/`
 
 The script:
 
-1. Adds `.canvas/` to the workspace `.gitignore`.
+1. Adds `.canvas/` and `*.canvas.jpg` / `.jpeg` / `.png` / `.webp` / `.gif` to the workspace `.gitignore`.
 2. Creates a minimal Vite React TypeScript project under `.canvas/`.
 3. Copies the skill's pinned `package.json` (and lockfile when present) and runs one `npm install --legacy-peer-deps` (or `npm ci` when the lockfile is present) with `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Pins include Vite 6, `@vitejs/plugin-react` 4, TypeScript 5.7, `react-is`, and Playwright 1.55.
 4. Installs Playwright Chromium unless `CANVAS_SKIP_PDF_BROWSER=1`.
 5. Initializes shadcn with `npx shadcn init --defaults --template vite --base base --yes`.
 6. Installs the shared shell's Button component and copies Dropdown Menu from the skill templates.
 7. Writes the owned Vite config (external canvas resolver) and copies `scripts/build.mjs` and `scripts/export-pdf.mjs`.
-8. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `29`).
-9. Copies `CanvasShell`, print CSS, and print layout from the skill's `runtime/` templates.
+8. Writes `.canvas/config.json` with the selected output mode and look (`schemaVersion` `30`).
+9. Copies `CanvasShell`, print CSS, print layout, and Vite image types from the skill's `runtime/` templates.
 
-Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, build, and PDF export files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, or `28` with valid mode and look syncs in place to `29`.
+Do not rerun setup when `.canvas/config.json` exists. On every later invocation, silently run `scripts/sync-runtime.mjs` so owned shell, print, Vite, build, and PDF export files stay current. Repair missing runtime files in place rather than deleting the folder. If the file is schema `18` with a valid `outputMode` and no `themeMode`, follow the in-place look upgrade in [SKILL.md](SKILL.md), then sync. Schema `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`, or `29` with valid mode and look syncs in place to `30`.
 
 ## Reset a broken setup
 
@@ -40,7 +40,7 @@ This deletes only the generated `<workspace>/.canvas/` runtime. It does not dele
 
 ## Authoring outside the runtime
 
-Canvas source belongs beside the user's referenced file or directory, not under `.canvas/`. Source imports resolve through the runtime:
+Canvas source belongs in a named folder beside the user's referenced file or directory, not under `.canvas/`. Example: `docs/marie-curie/marie-curie.canvas.tsx`. Source imports resolve through the runtime:
 
 ```tsx
 import { CanvasShell } from "@/canvas-shell"
@@ -64,10 +64,10 @@ export default function UsageReviewCanvas() {
 For React mode, build to a temporary single-file preview to validate imports and types:
 
 ```bash
-node .canvas/scripts/build.mjs path/to/name.canvas.tsx .canvas/preview/name.html
+node .canvas/scripts/build.mjs path/to/name/name.canvas.tsx .canvas/preview/name.html
 ```
 
-The preview remains ignored. The `.canvas.tsx` source is the deliverable.
+The preview remains ignored. The `.canvas.tsx` source in the canvas folder is the deliverable.
 
 If the user chooses to open the React canvas after creation, start the shared preview server from `<workspace>/.canvas`:
 
@@ -77,13 +77,13 @@ npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 
 Reuse an existing server only when it is this runtime's current Vite (working directory `.canvas`, version from `.canvas/package.json`, healthy after the latest scaffold or sync, and `/src/generated-entry.tsx` resolves). Do not reuse a leftover process that predates scaffold/sync or fails CSS/module imports. Keep the server running only because the user explicitly selected the preview option.
 
-For HTML mode, build beside the source:
+For HTML mode, build in the canvas folder:
 
 ```bash
-node .canvas/scripts/build.mjs path/to/name.canvas.tsx path/to/name.html
+node .canvas/scripts/build.mjs path/to/name/name.canvas.tsx path/to/name/name.html
 ```
 
-The build script writes one HTML file with JavaScript and CSS inlined. Do not use assets from `public/`; they are not guaranteed to be inlined. When a real photograph, portrait, map, artwork, or specimen belongs on the page, fetch a public-domain or CC0 file at authoring time with `scripts/fetch-commons-image.mjs` (see [IMAGES.md](IMAGES.md)). Import the sibling `*.image.ts` module; the bundle inlines it. Never hotlink. Typecheck includes `*.image.ts` next to the canvas source.
+The build script writes one HTML file with JavaScript, CSS, and imported stills inlined. Do not use assets from `public/`; they are not guaranteed to be inlined. When a real photograph, portrait, map, artwork, or specimen belongs on the page, fetch a public-domain or CC0 file at authoring time with `scripts/fetch-commons-image.mjs` (see [IMAGES.md](IMAGES.md)). Write `*.canvas.jpg` (or `.png`/`.webp`/`.gif`) into the canvas folder and import it; the bundle inlines it. Never hotlink. Those stills are gitignored.
 
 ## PDF export (not print design)
 
@@ -92,10 +92,10 @@ The priority is screen. **Export as PDF** is a share snapshot of the live page, 
 The live `CanvasShell` has no Save as PDF button. After the page builds, if the user chooses **Export as PDF**, resolve the PDF theme from [SKILL.md](SKILL.md), then run the CLI export against the already-built self-contained HTML. Do not open a browser for the user and do not start a preview server. Open the written PDF.
 
 ```bash
-node .canvas/scripts/export-pdf.mjs path/to/name.html path/to/name.pdf light
+node .canvas/scripts/export-pdf.mjs path/to/name/name.html path/to/name/name.pdf light
 ```
 
-Pass `dark` instead of `light` when that theme was chosen. HTML mode uses the sibling `.html`. React mode uses the validated preview under `.canvas/preview/`. Write the PDF beside the canvas source. The script prepares the page with the same print layout as before: expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, and hides interactive chrome (tab lists, chevrons, tooltips, selects). It then writes one custom-sized vector page. Overflow still expands; authored spacing is kept; row and line height are not inflated. Text is selectable; charts stay vector. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. `@media print` remains for File → Print only. There are no slides, no orientation picker, and no authored page breaks.
+Pass `dark` instead of `light` when that theme was chosen. HTML mode uses the sibling `.html`. React mode uses the validated preview under `.canvas/preview/`. Write the PDF in the canvas folder beside the source. The script prepares the page with the same print layout as before: expands disclosures and `<details>`, expands every tab panel into a labeled section, expands scrollable regions so clipped tables and lists are fully visible, and hides interactive chrome (tab lists, chevrons, tooltips, selects). It then writes one custom-sized vector page. Overflow still expands; authored spacing is kept; row and line height are not inflated. Text is selectable; charts stay vector. Playwright Chromium is installed during scaffold and repaired during sync; do not narrate that. `@media print` remains for File → Print only. There are no slides, no orientation picker, and no authored page breaks.
 
 Do not author `print:text-*` or enlarge on-screen type for the PDF. The export keeps on-screen type. Do not add print markup for overflow; expanding scroll containers is runtime-owned. Code blocks wrap instead of stretching the page.
 
@@ -134,12 +134,13 @@ Run from `<workspace>/.canvas`.
 
 - `.canvas/config.json` records `outputMode` as `react` or `html`.
 - `.canvas/config.json` records `themeMode` as `neutral` or `content`.
-- `.canvas/config.json` has `schemaVersion: 29`.
+- `.canvas/config.json` has `schemaVersion: 30`.
 - `.canvas/config.json` may record `pdfTheme` as `light` or `dark`; omit it to ask every time.
-- `.gitignore` contains `.canvas/` exactly once.
+- `.gitignore` contains `.canvas/` exactly once, plus `*.canvas.jpg`, `*.canvas.jpeg`, `*.canvas.png`, `*.canvas.webp`, and `*.canvas.gif`.
 - `.canvas/components.json` exists.
 - `.canvas/src/components/ui/button.tsx` exists.
 - `.canvas/src/components/ui/dropdown-menu.tsx` exists.
+- `.canvas/src/vite-env.d.ts` exists.
 - `.canvas/src/print-layout.ts` exists.
 - `.canvas/scripts/export-pdf.mjs` exists.
 - `.canvas/node_modules/playwright` exists after scaffold.

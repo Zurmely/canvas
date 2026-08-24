@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { mkdirSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, resolve } from "node:path"
+import { dirname, isAbsolute, resolve, basename } from "node:path"
 
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 const USER_AGENT =
@@ -9,6 +9,13 @@ const USER_AGENT =
 const DEFAULT_WIDTH = 1280
 const MAX_BYTES = 500_000
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
+const CANVAS_IMAGE_EXT = /\.canvas\.(jpg|jpeg|png|webp|gif)$/i
+const MIME_TO_CANVAS_EXT = {
+  "image/jpeg": ".canvas.jpg",
+  "image/png": ".canvas.png",
+  "image/webp": ".canvas.webp",
+  "image/gif": ".canvas.gif",
+}
 const ALLOWED_FROM_URL_HOSTS = [
   ".wikimedia.org",
   ".wikipedia.org",
@@ -22,13 +29,13 @@ const args = parseArgs(process.argv.slice(2))
 
 if (args.help || (!args.query && !args.file && !args.fromUrl)) {
   console.error(`Usage:
-  fetch-commons-image.mjs --query "Marie Curie portrait" --write ./curie.image.ts
+  fetch-commons-image.mjs --query "Marie Curie portrait" --write ./curie.canvas.jpg
   fetch-commons-image.mjs --query "Marie Curie portrait" --candidates
-  fetch-commons-image.mjs --file "File:Marie_Curie_c1920.jpg" --write ./curie.image.ts
-  fetch-commons-image.mjs --from-url <https-url> --license "Public domain" --credit "NASA" --alt "..." --write ./saturn.image.ts
+  fetch-commons-image.mjs --file "File:Marie_Curie_c1920.jpg" --write ./curie.canvas.jpg
+  fetch-commons-image.mjs --from-url <https-url> --license "Public domain" --credit "NASA" --alt "..." --write ./saturn.canvas.jpg
 
-Fetches a public-domain or CC0 still image at authoring time and writes a TypeScript
-module with an embedded data URL. Never hotlink. Never use copyrighted or CC BY files.`)
+Fetches a public-domain or CC0 still image at authoring time and writes a
+*.canvas.jpg (or .png/.webp/.gif) file. Never hotlink. Never use copyrighted or CC BY files.`)
   process.exit(args.help ? 0 : 1)
 }
 
@@ -56,18 +63,12 @@ async function main(options) {
     if (!options.credit || !options.alt) {
       return { ok: false, error: "--from-url requires --credit and --alt" }
     }
-    const downloaded = await downloadToDataUrl(options.fromUrl, options.width)
-    const written = writeModule(options.write, options.exportName, {
-      src: downloaded.dataUrl,
-      alt: options.alt,
-      credit: options.credit,
-      sourceUrl: options.fromUrl,
-      license: options.license,
-    })
+    const downloaded = await downloadImage(options.fromUrl, options.width)
+    const written = writeImageFile(options.write, downloaded)
     return {
       ok: true,
       written: written.path,
-      exportName: written.exportName,
+      importPath: written.importPath,
       alt: options.alt,
       credit: options.credit,
       license: options.license,
@@ -106,19 +107,13 @@ async function main(options) {
 
   const chosen = allowed[0]
   const imageUrl = chosen.thumbUrl || chosen.url
-  const downloaded = await downloadToDataUrl(imageUrl, options.width)
-  const written = writeModule(options.write, options.exportName, {
-    src: downloaded.dataUrl,
-    alt: chosen.alt,
-    credit: chosen.credit,
-    sourceUrl: chosen.pageUrl,
-    license: chosen.license,
-  })
+  const downloaded = await downloadImage(imageUrl, options.width)
+  const written = writeImageFile(options.write, downloaded)
 
   return {
     ok: true,
     written: written.path,
-    exportName: written.exportName,
+    importPath: written.importPath,
     title: chosen.title,
     alt: chosen.alt,
     credit: chosen.credit,
@@ -135,7 +130,6 @@ function parseArgs(argv) {
     file: "",
     fromUrl: "",
     write: "",
-    exportName: "",
     license: "",
     credit: "",
     alt: "",
@@ -160,9 +154,6 @@ function parseArgs(argv) {
       index += 1
     } else if (token === "--write" && next) {
       options.write = next
-      index += 1
-    } else if (token === "--export-name" && next) {
-      options.exportName = next
       index += 1
     } else if (token === "--license" && next) {
       options.license = next
@@ -310,7 +301,7 @@ function summarizeCandidate(record) {
   }
 }
 
-async function downloadToDataUrl(url, width) {
+async function downloadImage(url, width) {
   assertAllowedUrl(url)
   const first = await fetchImage(url)
   if (first.bytes <= MAX_BYTES) {
@@ -345,7 +336,7 @@ async function fetchImage(url) {
   return {
     mime,
     bytes: buffer.byteLength,
-    dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
+    buffer,
   }
 }
 
@@ -370,33 +361,19 @@ function assertAllowedUrl(value) {
   }
 }
 
-function writeModule(writePath, exportName, image) {
-  const resolved = resolveWritePath(writePath)
+function writeImageFile(writePath, downloaded) {
+  const resolved = resolveWritePath(writePath, downloaded.mime)
   mkdirSync(dirname(resolved), { recursive: true })
-  const name = toExportName(resolved, exportName)
-  const source = `export const ${name} = ${JSON.stringify(image, null, 2)} as const\n`
-  writeFileSync(resolved, source)
-  return { path: resolved, exportName: name }
+  writeFileSync(resolved, downloaded.buffer)
+  return { path: resolved, importPath: `./${basename(resolved)}` }
 }
 
-function resolveWritePath(writePath) {
+function resolveWritePath(writePath, mime) {
   const absolute = isAbsolute(writePath) ? writePath : resolve(process.cwd(), writePath)
-  return absolute.endsWith(".image.ts") ? absolute : `${absolute}.image.ts`
-}
-
-function toExportName(filePath, explicit) {
-  if (explicit) {
-    if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(explicit)) {
-      throw new Error("--export-name must be a valid JavaScript identifier")
-    }
-    return explicit
+  if (CANVAS_IMAGE_EXT.test(absolute)) {
+    return absolute
   }
-  const base = filePath.split("/").pop()?.replace(/\.image\.ts$/i, "") ?? "commonsImage"
-  const camel = base
-    .replace(/[^A-Za-z0-9]+([A-Za-z0-9])/g, (_, character) => character.toUpperCase())
-    .replace(/[^A-Za-z0-9]/g, "")
-  const identifier = camel || "commonsImage"
-  return /^[A-Za-z_$]/.test(identifier) ? identifier : `image${identifier}`
+  return `${absolute}${MIME_TO_CANVAS_EXT[mime] ?? ".canvas.jpg"}`
 }
 
 function metaValue(field) {
