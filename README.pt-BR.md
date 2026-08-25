@@ -1,6 +1,6 @@
 # Canvas Design
 
-[English](README.md) · [Português (Brasil)](README.pt-BR.md)
+[English](README.md) · [Português (Brasil)](README.pt-BR.md) · [Website](https://canvas.zurmely.com)
 
 Uma skill do Cursor para criar páginas visuais independentes com React, TypeScript, Tailwind CSS e [shadcn/ui](https://ui.shadcn.com). Invocada com `/canvas-design`.
 
@@ -90,6 +90,10 @@ Rodar o mesmo comando de novo substitui a skill instalada pela versão mais rece
 ├── README.md             # Instalação e uso (inglês)
 ├── README.pt-BR.md       # O mesmo guia em português brasileiro
 ├── .gitignore            # Regras de ignore do repositório; não faz parte da skill
+├── docs/                 # Site público em canvas.zurmely.com; não faz parte da skill
+│   ├── CNAME
+│   ├── index.canvas.tsx  # Fonte React editável
+│   └── index.html        # Página gerada servida pelo GitHub Pages
 └── skills/
     └── canvas-design/
         ├── SKILL.md              # Instruções para o agente
@@ -115,4 +119,4 @@ Rodar o mesmo comando de novo substitui a skill instalada pela versão mais rece
             └── reset-runtime.mjs         # Apaga o runtime para o primeiro uso rodar de novo
 ```
 
-`npx skills add Zurmely/canvas` encontra `skills/canvas-design/` e copia só essa pasta para `.cursor/skills/canvas-design/` (ou `~/.cursor/skills/canvas-design/` com `-g`). Não copia este README, o `README.md` em inglês, nem o `.gitignore`.
+`npx skills add Zurmely/canvas` encontra `skills/canvas-design/` e copia só essa pasta para `.cursor/skills/canvas-design/` (ou `~/.cursor/skills/canvas-design/` com `-g`). Não copia este README, o `README.md` em inglês, o `.gitignore`, nem `docs/`.

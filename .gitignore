@@ -1,12 +1,14 @@
 .canvas/
 .cursor/
 *.canvas.tsx
+!docs/index.canvas.tsx
 *.canvas.jpg
 *.canvas.jpeg
 *.canvas.png
 *.canvas.webp
 *.canvas.gif
 *.html
+!docs/index.html
 *.pdf
 .DS_Store
 node_modules/
